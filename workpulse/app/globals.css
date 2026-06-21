@@ -1,0 +1,66 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: #0F1117;
+  --color-foreground: #F1F5F9;
+  --color-surface: #1A1D2E;
+  --color-surface-raised: #232640;
+  --color-primary: #6C63FF;
+  --color-primary-foreground: #FFFFFF;
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-muted-foreground: #94A3B8;
+  --color-border: #2E3147;
+  --color-card: #1A1D2E;
+  --color-card-foreground: #F1F5F9;
+  --color-popover: #232640;
+  --color-popover-foreground: #F1F5F9;
+  --color-secondary: #232640;
+  --color-secondary-foreground: #F1F5F9;
+  --color-muted: #1A1D2E;
+  --color-accent: #232640;
+  --color-accent-foreground: #F1F5F9;
+  --color-destructive: #EF4444;
+  --color-input: #2E3147;
+  --color-ring: #6C63FF;
+  --color-sidebar: #1A1D2E;
+  --color-sidebar-foreground: #F1F5F9;
+  --color-sidebar-primary: #6C63FF;
+  --color-sidebar-primary-foreground: #FFFFFF;
+  --color-sidebar-accent: #232640;
+  --color-sidebar-accent-foreground: #F1F5F9;
+  --color-sidebar-border: #2E3147;
+  --color-sidebar-ring: #6C63FF;
+  --color-chart-1: #6C63FF;
+  --color-chart-2: #22C55E;
+  --color-chart-3: #F59E0B;
+  --color-chart-4: #EF4444;
+  --color-chart-5: #8B5CF6;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --radius: 0.625rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.75rem;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2E3147 transparent;
+}
+
+body {
+  @apply bg-background text-foreground antialiased;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+::selection {
+  background-color: rgba(108, 99, 255, 0.3);
+  color: #F1F5F9;
+}

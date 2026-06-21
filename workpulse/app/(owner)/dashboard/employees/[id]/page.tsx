@@ -1,0 +1,265 @@
+"use client";
+
+import { useState, use } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { DataTable } from "@/components/shared/DataTable";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, UserCheck, UserX } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import { formatDurationShort, formatDuration, formatDate } from "@/lib/utils";
+
+const COLORS = ["#6C63FF", "#22C55E", "#F59E0B", "#EF4444", "#8B5CF6"];
+
+export default function EmployeeDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+
+  const { data: employee, isLoading } = useQuery({
+    queryKey: ["employee", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/employees/${id}`);
+      const { data } = await res.json();
+      return data;
+    },
+    staleTime: 30000,
+  });
+
+  const { data: timeEntries } = useQuery({
+    queryKey: ["employee-time-entries", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/time-entries?userId=${id}&limit=500`);
+      const { data } = await res.json();
+      return data || [];
+    },
+    staleTime: 30000,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: Record<string, unknown>) => {
+      const res = await fetch(`/api/employees/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const { data: result, error } = await res.json();
+      if (error) throw new Error(error.message);
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employee", id] });
+      toast.success("Employee updated");
+      setEditing(false);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  if (isLoading) {
+    return <div className="space-y-6">
+      <div className="h-8 w-48 bg-surface-raised rounded animate-pulse" />
+      <div className="h-48 bg-surface-raised rounded-xl animate-pulse" />
+    </div>;
+  }
+
+  if (!employee) {
+    return <div className="text-center py-16 text-muted-foreground">Employee not found</div>;
+  }
+
+  const stats = employee.stats || {};
+  const projectBreakdown = stats.projectBreakdown || [];
+
+  const monthlyChartData = Array.from({ length: 12 }, (_, i) => {
+    const month = new Date();
+    month.setMonth(month.getMonth() - 11 + i);
+    const monthName = month.toLocaleDateString("en-US", { month: "short" });
+    return { month: monthName, hours: 0 };
+  });
+
+  const timeColumns = [
+    { key: "checkInAt", header: "Date", sortable: true, render: (e: any) => formatDate(e.checkInAt) },
+    { key: "project", header: "Project", render: (e: any) => (
+      <div className="flex items-center gap-2">
+        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: e.project?.color }} />
+        <span>{e.project?.name}</span>
+      </div>
+    )},
+    { key: "subTask", header: "Task", render: (e: any) => <span className="text-muted-foreground">{e.subTask?.name}</span> },
+    { key: "durationMinutes", header: "Duration", sortable: true, render: (e: any) => formatDuration(e.durationMinutes) },
+    { key: "notes", header: "Notes", render: (e: any) => <span className="text-muted-foreground text-sm truncate max-w-[200px] block">{e.notes || "--"}</span> },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <button
+        onClick={() => router.push("/dashboard/employees")}
+        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" /> Back to Employees
+      </button>
+
+      <Card className="border border-border p-6 rounded-xl">
+        <div className="flex items-start justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-4">
+            <Avatar className="h-16 w-16">
+              <AvatarFallback className="bg-primary text-primary-foreground text-lg">
+                {employee.name?.split(" ").map((n: string) => n[0]).join("")}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">{employee.name}</h1>
+              <p className="text-muted-foreground">{employee.email}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xs bg-surface-raised px-2 py-0.5 rounded">{employee.team?.name || "No team"}</span>
+                <div className="flex items-center gap-1 text-xs">
+                  <div className={`w-2 h-2 rounded-full ${employee.isActive ? "bg-success" : "bg-muted-foreground"}`} />
+                  <span className={employee.isActive ? "text-success" : "text-muted-foreground"}>
+                    {employee.isActive ? "Active" : "Inactive"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="border-border text-foreground"
+              onClick={() => setEditing(!editing)}
+            >
+              Edit Profile
+            </Button>
+            <Button
+              variant="outline"
+              className={employee.isActive ? "border-danger text-danger" : "border-success text-success"}
+              onClick={() => updateMutation.mutate({ isActive: !employee.isActive })}
+            >
+              {employee.isActive ? <UserX className="h-4 w-4 mr-2" /> : <UserCheck className="h-4 w-4 mr-2" />}
+              {employee.isActive ? "Deactivate" : "Reactivate"}
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+          <div className="p-4 rounded-lg bg-surface-raised text-center">
+            <p className="text-2xl font-bold text-foreground">{formatDurationShort(stats.todayMinutes)}</p>
+            <p className="text-xs text-muted-foreground">Today</p>
+          </div>
+          <div className="p-4 rounded-lg bg-surface-raised text-center">
+            <p className="text-2xl font-bold text-foreground">{formatDurationShort(stats.weekMinutes)}</p>
+            <p className="text-xs text-muted-foreground">This Week</p>
+          </div>
+          <div className="p-4 rounded-lg bg-surface-raised text-center">
+            <p className="text-2xl font-bold text-foreground">{formatDurationShort(stats.monthMinutes)}</p>
+            <p className="text-xs text-muted-foreground">This Month</p>
+          </div>
+        </div>
+      </Card>
+
+      {editing && (
+        <Card className="border border-border p-6 rounded-xl">
+          <h3 className="text-lg font-semibold text-foreground mb-4">Edit Profile</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-foreground">Name</Label>
+              <Input defaultValue={employee.name} id="edit-name" className="bg-surface border-border text-foreground" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-foreground">Phone</Label>
+              <Input defaultValue={employee.phone || ""} id="edit-phone" className="bg-surface border-border text-foreground" />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" onClick={() => setEditing(false)} className="border-border text-foreground">Cancel</Button>
+            <Button
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              onClick={() => {
+                const name = (document.getElementById("edit-name") as HTMLInputElement)?.value;
+                const phone = (document.getElementById("edit-phone") as HTMLInputElement)?.value;
+                if (name) updateMutation.mutate({ name, phone });
+              }}
+            >
+              Save
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      <Tabs defaultValue="overview">
+        <TabsList className="bg-surface border-border">
+          <TabsTrigger value="overview" className="data-[state=active]:bg-surface-raised">Overview</TabsTrigger>
+          <TabsTrigger value="timelog" className="data-[state=active]:bg-surface-raised">Time Log</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6 pt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="border border-border p-5 rounded-xl">
+              <h3 className="text-sm font-medium text-foreground mb-4">Monthly Hours</h3>
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={monthlyChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#2E3147" />
+                    <XAxis dataKey="month" stroke="#94A3B8" fontSize={11} />
+                    <YAxis stroke="#94A3B8" fontSize={11} />
+                    <Tooltip contentStyle={{ background: "#232640", border: "1px solid #2E3147", borderRadius: "8px", color: "#F1F5F9" }} />
+                    <Bar dataKey="hours" fill="#6C63FF" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            <Card className="border border-border p-5 rounded-xl">
+              <h3 className="text-sm font-medium text-foreground mb-4">Project Breakdown</h3>
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={projectBreakdown.map((p: any) => ({ name: p.name, value: Math.round(p.totalMinutes / 60) }))}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      dataKey="value"
+                      label={({ name, value }) => `${name}: ${value}h`}
+                    >
+                      {projectBreakdown.map((_: any, i: number) => (
+                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ background: "#232640", border: "1px solid #2E3147", borderRadius: "8px", color: "#F1F5F9" }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="timelog" className="pt-6">
+          <DataTable
+            columns={timeColumns}
+            data={timeEntries || []}
+            searchable
+            pageSize={20}
+            emptyMessage="No time entries"
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

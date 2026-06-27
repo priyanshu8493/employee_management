@@ -61,9 +61,9 @@ async function main() {
     }),
     prisma.user.create({
       data: {
-        email: "james@workpulse.com",
+        email: "alex@workpulse.com",
         passwordHash,
-        name: "James Wilson",
+        name: "Alex Rivera",
         role: "EMPLOYEE",
         teamId: engineeringTeam.id,
         avatarUrl: null,
@@ -99,9 +99,9 @@ async function main() {
     }),
     prisma.user.create({
       data: {
-        email: "alex@workpulse.com",
+        email: "james@workpulse.com",
         passwordHash,
-        name: "Alex Rivera",
+        name: "James Wilson",
         role: "TEAM_LEADER",
         teamId: engineeringTeam.id,
         avatarUrl: null,
@@ -270,10 +270,10 @@ async function main() {
   console.log("\nLogin credentials:");
   console.log("  Owner:        owner@workpulse.com / Admin@1234");
   console.log("  Employee:     sarah@workpulse.com / Admin@1234");
-  console.log("  Employee:     james@workpulse.com / Admin@1234");
+  console.log("  Employee:     alex@workpulse.com / Admin@1234");
   console.log("  Employee:     priya@workpulse.com / Admin@1234");
   console.log("  Team Leader:  maya@workpulse.com / Admin@1234");
-  console.log("  Team Leader:  alex@workpulse.com / Admin@1234");
+  console.log("  Team Leader:  james@workpulse.com / Admin@1234");
 }
 
 main()

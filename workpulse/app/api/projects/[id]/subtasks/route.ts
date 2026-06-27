@@ -14,9 +14,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const where: Record<string, unknown> = { projectId: id };
 
-    // Employees and team leaders only see subtasks assigned to them
-    // unless ?all=true is passed (used by team-tasks assignment page)
-    if ((session.user.role === "EMPLOYEE" || session.user.role === "TEAM_LEADER") && !showAll) {
+    // Employees only see subtasks assigned to them
+    // ?all=true bypasses this (used by team-tasks assignment page)
+    if (session.user.role === "EMPLOYEE" && !showAll) {
       where.assignedToId = session.user.id;
     }
 

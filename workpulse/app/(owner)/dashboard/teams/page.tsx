@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Edit3, Trash2, Users, Briefcase } from "lucide-react";
+import { Plus, Edit3, Trash2, Users, Briefcase, Crown } from "lucide-react";
 import { formatDurationShort } from "@/lib/utils";
 
 export default function TeamsPage() {
@@ -33,7 +33,7 @@ export default function TeamsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editTeam, setEditTeam] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", description: "", memberIds: [] as string[] });
+  const [form, setForm] = useState({ name: "", description: "", memberIds: [] as string[], teamLeadId: "" });
 
   const { data: teams, isLoading } = useQuery({
     queryKey: ["teams"],
@@ -70,7 +70,7 @@ export default function TeamsPage() {
       queryClient.invalidateQueries({ queryKey: ["teams"] });
       toast.success("Team created");
       setShowCreate(false);
-      setForm({ name: "", description: "", memberIds: [] });
+      setForm({ name: "", description: "", memberIds: [], teamLeadId: "" });
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -120,6 +120,20 @@ export default function TeamsPage() {
       key: "description",
       header: "Description",
       render: (t: any) => <span className="text-muted-foreground text-sm">{t.description || "--"}</span>,
+    },
+    {
+      key: "teamLead",
+      header: "Team Leader",
+      render: (t: any) => (
+        t.teamLead ? (
+          <div className="flex items-center gap-1.5">
+            <Crown className="h-3.5 w-3.5 text-warning" />
+            <span className="text-sm">{t.teamLead.name}</span>
+          </div>
+        ) : (
+          <span className="text-muted-foreground text-sm">--</span>
+        )
+      ),
     },
     {
       key: "members",
@@ -214,6 +228,22 @@ export default function TeamsPage() {
               />
             </div>
             <div className="space-y-2">
+              <Label className="text-foreground">Team Leader</Label>
+              <Select
+                value={form.teamLeadId}
+                onValueChange={(v) => setForm((p) => ({ ...p, teamLeadId: v || "" }))}
+              >
+                <SelectTrigger className="bg-surface border-border text-foreground">
+                  <SelectValue placeholder="Select team leader" />
+                </SelectTrigger>
+                <SelectContent className="bg-surface-raised border-border">
+                  {(allEmployees || []).map((e: any) => (
+                    <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label className="text-foreground">Members</Label>
               <Select
                 value={form.memberIds[0] || ""}
@@ -255,6 +285,20 @@ export default function TeamsPage() {
                 <Label className="text-foreground">Description</Label>
                 <Textarea defaultValue={editTeam.description || ""} id="edit-team-desc" className="bg-surface border-border text-foreground" />
               </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">Team Leader</Label>
+                <Select defaultValue={editTeam.teamLead?.id || ""} onValueChange={(v) => setEditTeam((p: any) => ({ ...p, _teamLeadId: v }))}>
+                  <SelectTrigger className="bg-surface border-border text-foreground">
+                    <SelectValue placeholder="Select team leader" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-surface-raised border-border">
+                    <SelectItem value="">None</SelectItem>
+                    {(allEmployees || []).map((e: any) => (
+                      <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex justify-end gap-3">
                 <Button variant="outline" onClick={() => setEditTeam(null)} className="border-border text-foreground">Cancel</Button>
                 <Button
@@ -262,7 +306,10 @@ export default function TeamsPage() {
                   onClick={() => {
                     const name = (document.getElementById("edit-team-name") as HTMLInputElement)?.value;
                     const description = (document.getElementById("edit-team-desc") as HTMLTextAreaElement)?.value;
-                    if (name) updateMutation.mutate({ id: editTeam.id, data: { name, description } });
+                    const teamLeadId = (editTeam as any)._teamLeadId;
+                    const data: Record<string, unknown> = { name, description };
+                    if (teamLeadId !== undefined) data.teamLeadId = teamLeadId || null;
+                    if (name) updateMutation.mutate({ id: editTeam.id, data });
                   }}
                 >
                   Save

@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   X,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/employee", label: "Home", icon: Home },
   { href: "/employee/time", label: "My Time", icon: Clock },
   { href: "/employee/history", label: "History", icon: History },
+  { href: "/employee/qc-flags", label: "QC Flags", icon: AlertTriangle },
   { href: "/employee/profile", label: "Profile", icon: User },
 ];
 

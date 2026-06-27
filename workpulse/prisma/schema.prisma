@@ -9,6 +9,7 @@ datasource db {
 enum Role {
   OWNER
   EMPLOYEE
+  TEAM_LEADER
 }
 
 enum ProjectStatus {
@@ -37,7 +38,10 @@ model User {
   updatedAt    DateTime     @updatedAt
   teamId       String?
   team         Team?        @relation("TeamMembers", fields: [teamId], references: [id])
+  teamLeadOf   Team?        @relation("TeamLead")
   timeEntries  TimeEntry[]
+  qcReports    QcReport[]   @relation("QcTeamLead")
+  qcMistakes   QcMistake[]
   accounts     Account[]
   sessions     Session[]
 
@@ -48,10 +52,13 @@ model Team {
   id          String        @id @default(cuid())
   name        String
   description String?
+  teamLeadId  String?       @unique
+  teamLead    User?         @relation("TeamLead", fields: [teamLeadId], references: [id])
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   members     User[]        @relation("TeamMembers")
   projectTeams ProjectTeam[]
+  qcReports   QcReport[]
 
   @@map("teams")
 }
@@ -116,6 +123,33 @@ model TimeEntry {
   subTask         SubTask   @relation(fields: [subTaskId], references: [id], onDelete: Cascade)
 
   @@map("time_entries")
+}
+
+model QcReport {
+  id         String      @id @default(cuid())
+  teamId     String
+  team       Team        @relation(fields: [teamId], references: [id])
+  teamLeadId String
+  teamLead   User        @relation("QcTeamLead", fields: [teamLeadId], references: [id])
+  date       DateTime    @default(now())
+  summary    String
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  mistakes   QcMistake[]
+
+  @@map("qc_reports")
+}
+
+model QcMistake {
+  id          String   @id @default(cuid())
+  qcReportId  String
+  qcReport    QcReport @relation(fields: [qcReportId], references: [id], onDelete: Cascade)
+  employeeId  String
+  employee    User     @relation(fields: [employeeId], references: [id])
+  description String
+  createdAt   DateTime @default(now())
+
+  @@map("qc_mistakes")
 }
 
 // NextAuth models

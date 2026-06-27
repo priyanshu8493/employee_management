@@ -12,6 +12,8 @@ async function main() {
   console.log("Seeding database...");
 
   // Clean existing data
+  await prisma.qcMistake.deleteMany();
+  await prisma.qcReport.deleteMany();
   await prisma.timeEntry.deleteMany();
   await prisma.subTask.deleteMany();
   await prisma.projectTeam.deleteMany();
@@ -81,6 +83,43 @@ async function main() {
     }),
   ]);
   console.log("Employees created");
+
+  // Team Leaders
+  const teamLeaders = await Promise.all([
+    prisma.user.create({
+      data: {
+        email: "maya@workpulse.com",
+        passwordHash,
+        name: "Maya Johnson",
+        role: "TEAM_LEADER",
+        teamId: designTeam.id,
+        avatarUrl: null,
+        phone: "+1-555-0104",
+      },
+    }),
+    prisma.user.create({
+      data: {
+        email: "alex@workpulse.com",
+        passwordHash,
+        name: "Alex Rivera",
+        role: "TEAM_LEADER",
+        teamId: engineeringTeam.id,
+        avatarUrl: null,
+        phone: "+1-555-0105",
+      },
+    }),
+  ]);
+
+  // Assign team leaders to their teams
+  await prisma.team.update({
+    where: { id: designTeam.id },
+    data: { teamLeadId: teamLeaders[0].id },
+  });
+  await prisma.team.update({
+    where: { id: engineeringTeam.id },
+    data: { teamLeadId: teamLeaders[1].id },
+  });
+  console.log("Team leaders created");
 
   // Projects
   const projects = await Promise.all([
@@ -230,10 +269,12 @@ async function main() {
 
   console.log("\nSeed completed successfully!");
   console.log("\nLogin credentials:");
-  console.log("  Owner:     owner@workpulse.com / Admin@1234");
-  console.log("  Employee:  sarah@workpulse.com / Admin@1234");
-  console.log("  Employee:  james@workpulse.com / Admin@1234");
-  console.log("  Employee:  priya@workpulse.com / Admin@1234");
+  console.log("  Owner:        owner@workpulse.com / Admin@1234");
+  console.log("  Employee:     sarah@workpulse.com / Admin@1234");
+  console.log("  Employee:     james@workpulse.com / Admin@1234");
+  console.log("  Employee:     priya@workpulse.com / Admin@1234");
+  console.log("  Team Leader:  maya@workpulse.com / Admin@1234");
+  console.log("  Team Leader:  alex@workpulse.com / Admin@1234");
 }
 
 main()

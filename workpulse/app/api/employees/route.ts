@@ -1,19 +1,32 @@
 import { NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { apiSuccess, apiError, handleApiError, requireRole, requireAuth } from "@/lib/api-utils";
+import { apiSuccess, apiError, handleApiError, requireRole, requireAuth, getAuthSession } from "@/lib/api-utils";
 import { employeeSchema } from "@/lib/validations";
 
 export async function GET(request: NextRequest) {
   try {
-    await requireRole("OWNER");
+    const session = await getAuthSession();
+    if (!session?.user?.id) return apiError("Unauthorized", "UNAUTHORIZED", 401);
+    if (session.user.role !== "OWNER" && session.user.role !== "TEAM_LEADER") {
+      return apiError("Forbidden", "FORBIDDEN", 403);
+    }
+
     const { searchParams } = new URL(request.url);
     const teamId = searchParams.get("teamId");
     const isActive = searchParams.get("isActive");
     const search = searchParams.get("search");
 
-    const where: Record<string, unknown> = { role: "EMPLOYEE" };
-    if (teamId) where.teamId = teamId;
+    const where: Record<string, unknown> = { role: { in: ["EMPLOYEE", "TEAM_LEADER"] } };
+    if (teamId) {
+      where.teamId = teamId;
+    } else if (session.user.role === "TEAM_LEADER") {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { teamId: true },
+      });
+      if (user?.teamId) where.teamId = user.teamId;
+    }
     if (isActive !== null) where.isActive = isActive === "true";
     if (search) {
       where.OR = [

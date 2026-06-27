@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { DataTable } from "@/components/shared/DataTable";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, UserCheck, UserX } from "lucide-react";
+import { ArrowLeft, UserCheck, UserX, AlertTriangle } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -40,6 +40,16 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
       const res = await fetch(`/api/employees/${id}`);
       const { data } = await res.json();
       return data;
+    },
+    staleTime: 30000,
+  });
+
+  const { data: mistakes } = useQuery({
+    queryKey: ["employee-mistakes", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/qc/mistakes?employeeId=${id}`);
+      const { data } = await res.json();
+      return data || [];
     },
     staleTime: 30000,
   });
@@ -206,6 +216,14 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
         <TabsList className="bg-surface border-border">
           <TabsTrigger value="overview" className="data-[state=active]:bg-surface-raised">Overview</TabsTrigger>
           <TabsTrigger value="timelog" className="data-[state=active]:bg-surface-raised">Time Log</TabsTrigger>
+          <TabsTrigger value="qcmistakes" className="data-[state=active]:bg-surface-raised relative">
+            QC Flags
+            {(mistakes?.length || 0) > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-danger text-[10px] text-white flex items-center justify-center">
+                {mistakes.length}
+              </span>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 pt-6">
@@ -258,6 +276,35 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
             pageSize={20}
             emptyMessage="No time entries"
           />
+        </TabsContent>
+
+        <TabsContent value="qcmistakes" className="pt-6">
+          {mistakes?.length > 0 ? (
+            <div className="space-y-3">
+              {mistakes.map((m: any) => (
+                <div key={m.id} className="p-4 rounded-lg bg-danger/5 border border-danger/20">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-4 w-4 text-danger mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-foreground">{m.description}</p>
+                      <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                        <span>Reported by {m.qcReport?.teamLead?.name}</span>
+                        <span>·</span>
+                        <span>{formatDate(m.createdAt)}</span>
+                        <span>·</span>
+                        <span>Team: {m.qcReport?.team?.name}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-40" />
+              <p>No QC flags for this employee</p>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

@@ -37,6 +37,7 @@ export const teamSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
   memberIds: z.array(z.string()).optional(),
+  teamLeadId: z.string().optional().nullable(),
 });
 
 export const checkInSchema = z.object({
@@ -59,6 +60,15 @@ export const profileSchema = z.object({
   name: z.string().min(1, "Name is required"),
   phone: z.string().optional().nullable(),
   avatarUrl: z.string().optional().nullable(),
+});
+
+export const qcReportSchema = z.object({
+  summary: z.string().min(1, "Summary is required"),
+  date: z.string().optional(),
+  mistakes: z.array(z.object({
+    employeeId: z.string().min(1, "Employee is required"),
+    description: z.string().min(1, "Description is required"),
+  })).optional(),
 });
 
 export const reportFiltersSchema = z.object({

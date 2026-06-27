@@ -1,16 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { toast } from "sonner";
-import { Play, Square, Clock, Coffee } from "lucide-react";
+import { Play, Square, AlertTriangle, Plus, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -29,14 +27,6 @@ import {
   Label,
 } from "@/components/ui/label";
 import { format } from "date-fns";
-
-const checkInSchema = z.object({
-  projectId: z.string().min(1, "Select a project"),
-  subTaskId: z.string().min(1, "Select a subtask"),
-  notes: z.string().optional(),
-});
-
-type CheckInForm = z.infer<typeof checkInSchema>;
 
 function LiveTimer({ checkInAt }: { checkInAt: string }) {
   const [elapsed, setElapsed] = useState("00:00:00");
@@ -67,7 +57,12 @@ export default function EmployeeHomePage() {
   const queryClient = useQueryClient();
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [checkoutNotes, setCheckoutNotes] = useState("");
+  const [showQcModal, setShowQcModal] = useState(false);
+  const [qcSummary, setQcSummary] = useState("");
+  const [qcMistakes, setQcMistakes] = useState<{ employeeId: string; description: string }[]>([]);
   const [greeting, setGreeting] = useState("");
+
+  const isTeamLeader = session?.user?.role === "TEAM_LEADER";
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -94,6 +89,18 @@ export default function EmployeeHomePage() {
       return data || [];
     },
     staleTime: 60000,
+  });
+
+  const { data: teamMembers } = useQuery({
+    queryKey: ["team-members"],
+    queryFn: async () => {
+      if (!session?.user?.teamId) return [];
+      const res = await fetch(`/api/employees?teamId=${session.user.teamId}`);
+      const { data } = await res.json();
+      return data || [];
+    },
+    enabled: isTeamLeader,
+    staleTime: 30000,
   });
 
   const [selectedProject, setSelectedProject] = useState<string>("");
@@ -135,6 +142,36 @@ export default function EmployeeHomePage() {
       toast.success("Checked out successfully!");
       setShowCheckoutModal(false);
       setCheckoutNotes("");
+      if (isTeamLeader) {
+        setQcSummary("");
+        setQcMistakes([]);
+        setShowQcModal(true);
+      }
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
+  });
+
+  const qcMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/qc/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          summary: qcSummary,
+          mistakes: qcMistakes.filter((m) => m.employeeId && m.description),
+        }),
+      });
+      const { data, error } = await res.json();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("QC report submitted!");
+      setShowQcModal(false);
+      setQcSummary("");
+      setQcMistakes([]);
     },
     onError: (err: Error) => {
       toast.error(err.message);
@@ -180,6 +217,22 @@ export default function EmployeeHomePage() {
   const filteredSubtasks = (subtasks || []).filter(
     (s: any) => s.status === "TODO" || s.status === "IN_PROGRESS"
   );
+
+  const addMistake = () => {
+    setQcMistakes((prev) => [...prev, { employeeId: "", description: "" }]);
+  };
+
+  const updateMistake = (index: number, field: string, value: string) => {
+    setQcMistakes((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const removeMistake = (index: number) => {
+    setQcMistakes((prev) => prev.filter((_, i) => i !== index));
+  };
 
   return (
     <div className="space-y-8">
@@ -348,6 +401,101 @@ export default function EmployeeHomePage() {
               className="bg-danger hover:bg-danger/90 text-white"
             >
               {checkoutMutation.isPending ? "Checking out..." : "Confirm Check Out"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showQcModal} onOpenChange={setShowQcModal}>
+        <DialogContent className="bg-surface-raised border-border max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-foreground flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              Quality Control Report
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label className="text-foreground">Day Summary</Label>
+              <p className="text-sm text-muted-foreground">
+                Summarize the work done today by your team, potential fail points, and overall quality observations.
+              </p>
+              <Textarea
+                placeholder="Today's summary, potential fail points, overall observations..."
+                value={qcSummary}
+                onChange={(e) => setQcSummary(e.target.value)}
+                className="bg-surface border-border text-foreground placeholder:text-muted-foreground min-h-[100px]"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-foreground">Flagged Mistakes</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={addMistake}
+                  className="border-border text-foreground"
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Add Mistake
+                </Button>
+              </div>
+
+              {qcMistakes.map((mistake, index) => (
+                <div key={index} className="flex gap-3 items-start p-3 rounded-lg bg-surface border border-border">
+                  <div className="flex-1 space-y-2">
+                    <Select
+                      value={mistake.employeeId}
+                      onValueChange={(v) => { if (v) updateMistake(index, "employeeId", v); }}
+                    >
+                      <SelectTrigger className="bg-surface-raised border-border text-foreground">
+                        <SelectValue placeholder="Select employee" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-surface-raised border-border">
+                        {(teamMembers || []).map((m: any) => (
+                          <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      placeholder="Describe the mistake or fail point..."
+                      value={mistake.description}
+                      onChange={(e) => updateMistake(index, "description", e.target.value)}
+                      className="bg-surface-raised border-border text-foreground placeholder:text-muted-foreground"
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeMistake(index)}
+                    className="text-danger mt-1 shrink-0"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+
+              {qcMistakes.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No mistakes flagged. You can submit the report without flagging any mistakes.
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowQcModal(false)}
+              className="border-border text-foreground"
+            >
+              Skip
+            </Button>
+            <Button
+              onClick={() => qcMutation.mutate()}
+              disabled={!qcSummary || qcMutation.isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              {qcMutation.isPending ? "Submitting..." : "Submit QC Report"}
             </Button>
           </DialogFooter>
         </DialogContent>

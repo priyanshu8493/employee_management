@@ -10,7 +10,8 @@ export async function GET() {
     const teams = await prisma.team.findMany({
       include: {
         _count: { select: { members: true, projectTeams: true } },
-        members: { select: { id: true, name: true, avatarUrl: true } },
+        members: { select: { id: true, name: true, avatarUrl: true, role: true } },
+        teamLead: { select: { id: true, name: true, avatarUrl: true } },
       },
       orderBy: { name: "asc" },
     });
@@ -31,12 +32,14 @@ export async function POST(request: NextRequest) {
       data: {
         name: parsed.name,
         description: parsed.description,
+        teamLeadId: parsed.teamLeadId || null,
         members: parsed.memberIds?.length
           ? { connect: parsed.memberIds.map((id) => ({ id })) }
           : undefined,
       },
       include: {
         _count: { select: { members: true, projectTeams: true } },
+        teamLead: { select: { id: true, name: true, avatarUrl: true } },
       },
     });
 

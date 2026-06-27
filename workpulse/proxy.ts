@@ -37,7 +37,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/employee", request.url));
   }
 
-  if (isEmployeeRoute && token.role !== "EMPLOYEE") {
+  if (isEmployeeRoute && token.role !== "EMPLOYEE" && token.role !== "TEAM_LEADER") {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

@@ -13,18 +13,24 @@ import {
   Menu,
   X,
   AlertTriangle,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 
-const navItems = [
+const employeeNavItems = [
   { href: "/employee", label: "Home", icon: Home },
   { href: "/employee/time", label: "My Time", icon: Clock },
   { href: "/employee/history", label: "History", icon: History },
   { href: "/employee/qc-flags", label: "QC Flags", icon: AlertTriangle },
   { href: "/employee/profile", label: "Profile", icon: User },
+];
+
+const teamLeaderNavItems = [
+  ...employeeNavItems,
+  { href: "/employee/team-tasks", label: "Team Tasks", icon: Users },
 ];
 
 export function EmployeeSidebar() {
@@ -59,7 +65,7 @@ export function EmployeeSidebar() {
         </div>
 
         <nav className="flex-1 py-4 px-3 space-y-1">
-          {navItems.map((item) => {
+          {(session?.user?.role === "TEAM_LEADER" ? teamLeaderNavItems : employeeNavItems).map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
             return (

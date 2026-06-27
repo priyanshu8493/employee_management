@@ -21,6 +21,7 @@ export const subTaskSchema = z.object({
   description: z.string().optional(),
   status: z.enum(["TODO", "IN_PROGRESS", "DONE"]).optional(),
   estimatedHours: z.number().min(0).optional().nullable(),
+  assignedToId: z.string().optional().nullable(),
 });
 
 export const employeeSchema = z.object({

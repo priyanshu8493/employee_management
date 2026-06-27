@@ -9,9 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DataTable } from "@/components/shared/DataTable";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { EmptyState } from "@/components/shared/EmptyState";
 import {
   Dialog,
   DialogContent,
@@ -25,8 +25,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Edit3, Trash2, Users, Briefcase, Crown } from "lucide-react";
-import { formatDurationShort } from "@/lib/utils";
+import { Plus, Edit3, Trash2, Users, Briefcase, Crown, X } from "lucide-react";
+
+const allRoles = ["OWNER", "EMPLOYEE", "TEAM_LEADER"];
 
 export default function TeamsPage() {
   const queryClient = useQueryClient();
@@ -34,6 +35,7 @@ export default function TeamsPage() {
   const [editTeam, setEditTeam] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", description: "", memberIds: [] as string[], teamLeadId: "" });
+  const [editForm, setEditForm] = useState({ name: "", description: "", memberIds: [] as string[], teamLeadId: "" });
 
   const { data: teams, isLoading } = useQuery({
     queryKey: ["teams"],
@@ -109,6 +111,34 @@ export default function TeamsPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const openEdit = (team: any) => {
+    setEditTeam(team);
+    setEditForm({
+      name: team.name,
+      description: team.description || "",
+      memberIds: (team.members || []).map((m: any) => m.id),
+      teamLeadId: team.teamLead?.id || "",
+    });
+  };
+
+  const toggleCreateMember = (id: string) => {
+    setForm((p) => ({
+      ...p,
+      memberIds: p.memberIds.includes(id)
+        ? p.memberIds.filter((mid) => mid !== id)
+        : [...p.memberIds, id],
+    }));
+  };
+
+  const toggleEditMember = (id: string) => {
+    setEditForm((p) => ({
+      ...p,
+      memberIds: p.memberIds.includes(id)
+        ? p.memberIds.filter((mid) => mid !== id)
+        : [...p.memberIds, id],
+    }));
+  };
+
   const columns = [
     {
       key: "name",
@@ -164,7 +194,7 @@ export default function TeamsPage() {
             variant="ghost"
             size="sm"
             className="text-muted-foreground"
-            onClick={(e) => { e.stopPropagation(); setEditTeam(t); }}
+            onClick={(e) => { e.stopPropagation(); openEdit(t); }}
           >
             <Edit3 className="h-3.5 w-3.5" />
           </Button>
@@ -206,7 +236,7 @@ export default function TeamsPage() {
       />
 
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="bg-surface-raised border-border max-w-md">
+        <DialogContent className="bg-surface-raised border-border max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-foreground">Create Team</DialogTitle>
           </DialogHeader>
@@ -244,20 +274,28 @@ export default function TeamsPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-foreground">Members</Label>
-              <Select
-                value={form.memberIds[0] || ""}
-                onValueChange={(v) => setForm((p) => ({ ...p, memberIds: v ? [v] : [] }))}
-              >
-                <SelectTrigger className="bg-surface border-border text-foreground">
-                  <SelectValue placeholder="Select member" />
-                </SelectTrigger>
-                <SelectContent className="bg-surface-raised border-border">
-                  {(allEmployees || []).map((e: any) => (
-                    <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-foreground">
+                Members ({form.memberIds.length} selected)
+              </Label>
+              <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-lg border border-border p-2">
+                {(allEmployees || []).length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-2">No employees available</p>
+                ) : (
+                  (allEmployees || []).map((e: any) => (
+                    <label
+                      key={e.id}
+                      className="flex items-center gap-2.5 p-2 rounded-md hover:bg-surface cursor-pointer text-sm"
+                    >
+                      <Checkbox
+                        checked={form.memberIds.includes(e.id)}
+                        onCheckedChange={() => toggleCreateMember(e.id)}
+                      />
+                      <span className="text-foreground">{e.name}</span>
+                      <span className="text-muted-foreground text-xs ml-auto">{e.email}</span>
+                    </label>
+                  ))
+                )}
+              </div>
             </div>
             <Button
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -271,7 +309,7 @@ export default function TeamsPage() {
       </Dialog>
 
       <Dialog open={!!editTeam} onOpenChange={() => setEditTeam(null)}>
-        <DialogContent className="bg-surface-raised border-border max-w-md">
+        <DialogContent className="bg-surface-raised border-border max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-foreground">Edit Team</DialogTitle>
           </DialogHeader>
@@ -279,15 +317,26 @@ export default function TeamsPage() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-foreground">Name</Label>
-                <Input defaultValue={editTeam.name} id="edit-team-name" className="bg-surface border-border text-foreground" />
+                <Input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
+                  className="bg-surface border-border text-foreground"
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-foreground">Description</Label>
-                <Textarea defaultValue={editTeam.description || ""} id="edit-team-desc" className="bg-surface border-border text-foreground" />
+                <Textarea
+                  value={editForm.description}
+                  onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
+                  className="bg-surface border-border text-foreground placeholder:text-muted-foreground"
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-foreground">Team Leader</Label>
-                <Select defaultValue={editTeam.teamLead?.id || ""} onValueChange={(v) => setEditTeam((p: any) => ({ ...p, _teamLeadId: v }))}>
+                <Select
+                  value={editForm.teamLeadId}
+                  onValueChange={(v) => setEditForm((p) => ({ ...p, teamLeadId: v || "" }))}
+                >
                   <SelectTrigger className="bg-surface border-border text-foreground">
                     <SelectValue placeholder="Select team leader" />
                   </SelectTrigger>
@@ -299,17 +348,45 @@ export default function TeamsPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">
+                  Members ({editForm.memberIds.length} selected)
+                </Label>
+                <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-lg border border-border p-2">
+                  {(allEmployees || []).length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-2">No employees available</p>
+                  ) : (
+                    (allEmployees || []).map((e: any) => (
+                      <label
+                        key={e.id}
+                        className="flex items-center gap-2.5 p-2 rounded-md hover:bg-surface cursor-pointer text-sm"
+                      >
+                        <Checkbox
+                          checked={editForm.memberIds.includes(e.id)}
+                          onCheckedChange={() => toggleEditMember(e.id)}
+                        />
+                        <span className="text-foreground">{e.name}</span>
+                        <span className="text-muted-foreground text-xs ml-auto">{e.email}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
               <div className="flex justify-end gap-3">
                 <Button variant="outline" onClick={() => setEditTeam(null)} className="border-border text-foreground">Cancel</Button>
                 <Button
                   className="bg-primary hover:bg-primary/90 text-primary-foreground"
                   onClick={() => {
-                    const name = (document.getElementById("edit-team-name") as HTMLInputElement)?.value;
-                    const description = (document.getElementById("edit-team-desc") as HTMLTextAreaElement)?.value;
-                    const teamLeadId = (editTeam as any)._teamLeadId;
-                    const data: Record<string, unknown> = { name, description };
-                    if (teamLeadId !== undefined) data.teamLeadId = teamLeadId || null;
-                    if (name) updateMutation.mutate({ id: editTeam.id, data });
+                    if (!editForm.name) return;
+                    updateMutation.mutate({
+                      id: editTeam.id,
+                      data: {
+                        name: editForm.name,
+                        description: editForm.description,
+                        teamLeadId: editForm.teamLeadId || null,
+                        memberIds: editForm.memberIds,
+                      },
+                    });
                   }}
                 >
                   Save

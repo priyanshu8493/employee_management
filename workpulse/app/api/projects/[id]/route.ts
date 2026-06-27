@@ -21,6 +21,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         },
         subTasks: {
           orderBy: { createdAt: "asc" },
+          include: {
+            assignedTo: { select: { id: true, name: true, avatarUrl: true } },
+          },
         },
         _count: { select: { timeEntries: true } },
       },
@@ -44,16 +47,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const existing = await prisma.project.findUnique({ where: { id } });
     if (!existing) return apiError("Project not found", "NOT_FOUND", 404);
 
+    const { teamIds, startDate, endDate, ...projectFields } = parsed;
+
     const project = await prisma.project.update({
       where: { id },
       data: {
-        ...parsed,
-        startDate: parsed.startDate ? new Date(parsed.startDate) : undefined,
-        endDate: parsed.endDate ? new Date(parsed.endDate) : undefined,
-        projectTeams: parsed.teamIds
+        ...projectFields,
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
+        projectTeams: teamIds
           ? {
               deleteMany: {},
-              create: parsed.teamIds.map((teamId) => ({ teamId })),
+              create: teamIds.map((teamId) => ({ teamId })),
             }
           : undefined,
       },

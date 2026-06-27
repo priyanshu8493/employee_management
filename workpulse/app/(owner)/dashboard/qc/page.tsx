@@ -31,7 +31,7 @@ export default function QcReportsPage() {
     queryKey: ["qc-reports", teamFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (teamFilter) params.set("teamId", teamFilter);
+      if (teamFilter && teamFilter !== "all") params.set("teamId", teamFilter);
       const res = await fetch(`/api/qc/reports?${params}`);
       const { data } = await res.json();
       return data || [];

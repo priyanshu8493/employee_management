@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import { use } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,14 +40,15 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { ArrowLeft, Plus, Trash2, Edit3 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowLeft, Plus, Trash2, Edit3, Users } from "lucide-react";
 import { formatDuration, formatTime, formatDate, formatDurationShort } from "@/lib/utils";
 
 const STATUS_ORDER = ["TODO", "IN_PROGRESS", "DONE"] as const;
 const PRESET_COLORS = ["#6C63FF", "#22C55E", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4", "#EC4899", "#14B8A6"];
 
-export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function ProjectDetailPage() {
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
@@ -56,13 +56,36 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [editSubtask, setEditSubtask] = useState<any>(null);
   const [deleteSubtaskId, setDeleteSubtaskId] = useState<string | null>(null);
   const [newSubtask, setNewSubtask] = useState({ name: "", description: "", estimatedHours: 0 });
+  const [newTeamIds, setNewTeamIds] = useState<string[]>([]);
+  const [showTeamAssignment, setShowTeamAssignment] = useState(false);
 
-  const { data: project, isLoading } = useQuery({
+  const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
     queryFn: async () => {
       const res = await fetch(`/api/projects/${id}`);
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message);
+      return json.data;
+    },
+    staleTime: 30000,
+  });
+
+  const { data: allTeams } = useQuery({
+    queryKey: ["teams"],
+    queryFn: async () => {
+      const res = await fetch("/api/teams");
       const { data } = await res.json();
-      return data;
+      return data || [];
+    },
+    staleTime: 30000,
+  });
+
+  const { data: allEmployees } = useQuery({
+    queryKey: ["employees-all"],
+    queryFn: async () => {
+      const res = await fetch("/api/employees");
+      const { data } = await res.json();
+      return data || [];
     },
     staleTime: 30000,
   });
@@ -131,6 +154,25 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const assignTeamsMutation = useMutation({
+    mutationFn: async (teamIds: string[]) => {
+      const res = await fetch(`/api/projects/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teamIds }),
+      });
+      const { data, error } = await res.json();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", id] });
+      toast.success("Teams updated");
+      setShowTeamAssignment(false);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   const updateSubtaskMutation = useMutation({
     mutationFn: async ({ subtaskId, data }: { subtaskId: string; data: Record<string, unknown> }) => {
       const res = await fetch(`/api/subtasks/${subtaskId}`, {
@@ -159,7 +201,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   }
 
   if (!project) {
-    return <div className="text-center py-16 text-muted-foreground">Project not found</div>;
+    return (
+      <div className="text-center py-16">
+        <p className="text-muted-foreground">Project not found</p>
+        {error && <p className="text-danger text-sm mt-2">{(error as Error).message}</p>}
+      </div>
+    );
   }
 
   const totalMinutes = (timeEntries || []).reduce((s: number, e: any) => s + (e.durationMinutes || 0), 0);
@@ -181,12 +228,24 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       hours: Math.round((minutes / 60) * 10) / 10,
     }));
 
+  const teamMembers = (project?.projectTeams || []).flatMap((pt: any) => pt.team?.members || []);
+
   const subtaskColumns = [
     {
       key: "name",
       header: "Name",
       sortable: true,
       render: (s: any) => <span className="font-medium">{s.name}</span>,
+    },
+    {
+      key: "assignedTo",
+      header: "Assigned To",
+      render: (s: any) => {
+        if (s.assignedTo) {
+          return <span className="text-sm">{s.assignedTo.name}</span>;
+        }
+        return <span className="text-muted-foreground text-sm italic">Unassigned</span>;
+      },
     },
     {
       key: "status",
@@ -217,6 +276,28 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       key: "entries",
       header: "Time Entries",
       render: (s: any) => <span className="text-muted-foreground">{s._count?.timeEntries || 0}</span>,
+    },
+    {
+      key: "assign",
+      header: "Assign",
+      render: (s: any) => (
+        <Select
+          value={s.assignedTo?.id || ""}
+          onValueChange={(v) => {
+            if (v) updateSubtaskMutation.mutate({ subtaskId: s.id, data: { assignedToId: v } });
+          }}
+        >
+          <SelectTrigger className="w-36 h-7 bg-surface border-border text-xs">
+            <SelectValue placeholder="Assign..." />
+          </SelectTrigger>
+          <SelectContent className="bg-surface-raised border-border">
+            <SelectItem value="">Unassign</SelectItem>
+            {teamMembers.map((m: any) => (
+              <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ),
     },
     {
       key: "actions",
@@ -445,7 +526,20 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
         <TabsContent value="team">
           <Card className="border border-border p-5 rounded-xl">
-            <h3 className="text-sm font-medium text-foreground mb-4">Assigned Teams</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-foreground">Assigned Teams</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-border text-foreground"
+                onClick={() => {
+                  setNewTeamIds((project.projectTeams || []).map((pt: any) => pt.team.id));
+                  setShowTeamAssignment(true);
+                }}
+              >
+                <Users className="h-3.5 w-3.5 mr-1.5" /> Manage Teams
+              </Button>
+            </div>
             <div className="space-y-3">
               {project.projectTeams?.length === 0 ? (
                 <p className="text-muted-foreground text-sm py-8 text-center">No teams assigned</p>
@@ -567,6 +661,53 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showTeamAssignment} onOpenChange={setShowTeamAssignment}>
+        <DialogContent className="bg-surface-raised border-border max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Assign Teams to Project</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 max-h-64 overflow-y-auto">
+            {(allTeams || []).length === 0 ? (
+              <p className="text-muted-foreground text-sm text-center py-4">No teams available</p>
+            ) : (
+              (allTeams || []).map((t: any) => (
+                <label
+                  key={t.id}
+                  className="flex items-center gap-2.5 p-2.5 rounded-lg hover:bg-surface cursor-pointer"
+                >
+                  <Checkbox
+                    checked={newTeamIds.includes(t.id)}
+                    onCheckedChange={(checked) => {
+                      setNewTeamIds((prev) =>
+                        checked
+                          ? [...prev, t.id]
+                          : prev.filter((tid) => tid !== t.id)
+                      );
+                    }}
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{t.name}</p>
+                    <p className="text-xs text-muted-foreground">{t._count?.members || 0} members</p>
+                  </div>
+                </label>
+              ))
+            )}
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" onClick={() => setShowTeamAssignment(false)} className="border-border text-foreground">
+              Cancel
+            </Button>
+            <Button
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              onClick={() => assignTeamsMutation.mutate(newTeamIds)}
+              disabled={assignTeamsMutation.isPending}
+            >
+              Save
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

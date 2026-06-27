@@ -39,9 +39,10 @@ model User {
   teamId       String?
   team         Team?        @relation("TeamMembers", fields: [teamId], references: [id])
   teamLeadOf   Team?        @relation("TeamLead")
-  timeEntries  TimeEntry[]
-  qcReports    QcReport[]   @relation("QcTeamLead")
-  qcMistakes   QcMistake[]
+  timeEntries    TimeEntry[]
+  assignedSubTasks SubTask[]
+  qcReports      QcReport[]   @relation("QcTeamLead")
+  qcMistakes     QcMistake[]
   accounts     Account[]
   sessions     Session[]
 
@@ -98,6 +99,8 @@ model SubTask {
   description    String?
   status         SubTaskStatus  @default(TODO)
   estimatedHours Float?
+  assignedToId   String?
+  assignedTo     User?          @relation(fields: [assignedToId], references: [id])
   projectId      String
   project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   createdAt      DateTime       @default(now())

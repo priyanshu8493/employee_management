@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Play, Square, AlertTriangle, Plus, Trash2 } from "lucide-react";
+import { Play, Square, AlertTriangle, Plus, Trash2, Clock, BarChart3 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -27,6 +28,7 @@ import {
   Label,
 } from "@/components/ui/label";
 import { format } from "date-fns";
+import { formatDurationShort } from "@/lib/utils";
 
 function LiveTimer({ checkInAt }: { checkInAt: string }) {
   const [elapsed, setElapsed] = useState("00:00:00");
@@ -57,9 +59,13 @@ export default function EmployeeHomePage() {
   const queryClient = useQueryClient();
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [checkoutNotes, setCheckoutNotes] = useState("");
+  const [markTaskDone, setMarkTaskDone] = useState(false);
   const [showQcModal, setShowQcModal] = useState(false);
   const [qcSummary, setQcSummary] = useState("");
   const [qcMistakes, setQcMistakes] = useState<{ employeeId: string; description: string }[]>([]);
+  const [checkinProject, setCheckinProject] = useState<any>(null);
+  const [checkinSubTask, setCheckinSubTask] = useState("");
+  const [checkinNotes, setCheckinNotes] = useState("");
   const [greeting, setGreeting] = useState("");
 
   const isTeamLeader = session?.user?.role === "TEAM_LEADER";
@@ -91,6 +97,18 @@ export default function EmployeeHomePage() {
     staleTime: 60000,
   });
 
+  const { data: todayEntries } = useQuery({
+    queryKey: ["today-entries"],
+    queryFn: async () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const res = await fetch(`/api/time-entries?startDate=${today.toISOString()}&limit=200`);
+      const { data } = await res.json();
+      return data || [];
+    },
+    staleTime: 30000,
+  });
+
   const { data: teamMembers } = useQuery({
     queryKey: ["team-members"],
     queryFn: async () => {
@@ -103,23 +121,33 @@ export default function EmployeeHomePage() {
     staleTime: 30000,
   });
 
-  const [selectedProject, setSelectedProject] = useState<string>("");
-  const [selectedSubTask, setSelectedSubTask] = useState<string>("");
-  const [notes, setNotes] = useState("");
-
   const { data: subtasks } = useQuery({
-    queryKey: ["project-subtasks", selectedProject],
+    queryKey: ["project-subtasks", checkinProject?.id],
     queryFn: async () => {
-      if (!selectedProject) return [];
-      const res = await fetch(`/api/projects/${selectedProject}/subtasks`);
+      if (!checkinProject?.id) return [];
+      const res = await fetch(`/api/projects/${checkinProject.id}/subtasks`);
       const { data } = await res.json();
       return data || [];
     },
-    enabled: !!selectedProject,
+    enabled: !!checkinProject?.id,
   });
 
   const activeProjects = (projects || []).filter(
     (p: any) => p.status === "ACTIVE"
+  );
+
+  const availableProjects = activeProjects.filter((p: any) => {
+    if (!session?.user?.teamId) return false;
+    return p.projectTeams?.some((pt: any) => pt.teamId === session.user.teamId);
+  });
+
+  const filteredSubtasks = (subtasks || []).filter(
+    (s: any) => s.status === "TODO" || s.status === "IN_PROGRESS"
+  );
+
+  const todayTotal = (todayEntries || []).reduce(
+    (sum: number, e: any) => sum + (e.durationMinutes || 0),
+    0
   );
 
   const checkoutMutation = useMutation({
@@ -131,17 +159,32 @@ export default function EmployeeHomePage() {
           action: "checkout",
           timeEntryId: entryId,
           notes: checkoutNotes || undefined,
+          markTaskDone: markTaskDone || undefined,
         }),
       });
       const { data, error } = await res.json();
       if (error) throw new Error(error.message);
+
+      if (markTaskDone && activeSession?.subTask?.id) {
+        const doneRes = await fetch(`/api/subtasks/${activeSession.subTask.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "DONE" }),
+        });
+        const result = await doneRes.json();
+        if (result.error) throw new Error(result.error.message);
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["active-session"] });
-      toast.success("Checked out successfully!");
+      queryClient.invalidateQueries({ queryKey: ["today-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["project-subtasks"] });
+      toast.success(markTaskDone ? "Task marked complete! Checked out." : "Checked out successfully!");
       setShowCheckoutModal(false);
       setCheckoutNotes("");
+      setMarkTaskDone(false);
       if (isTeamLeader) {
         setQcSummary("");
         setQcMistakes([]);
@@ -185,9 +228,9 @@ export default function EmployeeHomePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "checkin",
-          projectId: selectedProject,
-          subTaskId: selectedSubTask,
-          notes: notes || undefined,
+          projectId: checkinProject.id,
+          subTaskId: checkinSubTask,
+          notes: checkinNotes || undefined,
         }),
       });
       const { data, error } = await res.json();
@@ -197,26 +240,14 @@ export default function EmployeeHomePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["active-session"] });
       toast.success("Checked in! Time tracking started.");
-      setSelectedProject("");
-      setSelectedSubTask("");
-      setNotes("");
+      setCheckinProject(null);
+      setCheckinSubTask("");
+      setCheckinNotes("");
     },
     onError: (err: Error) => {
       toast.error(err.message);
     },
   });
-
-  const formatProjectOptions = (project: any) => {
-    return activeProjects.filter((p: any) => {
-      if (!session?.user?.teamId) return false;
-      return p.projectTeams?.some((pt: any) => pt.teamId === session.user.teamId);
-    });
-  };
-
-  const availableProjects = formatProjectOptions(activeProjects);
-  const filteredSubtasks = (subtasks || []).filter(
-    (s: any) => s.status === "TODO" || s.status === "IN_PROGRESS"
-  );
 
   const addMistake = () => {
     setQcMistakes((prev) => [...prev, { employeeId: "", description: "" }]);
@@ -236,13 +267,21 @@ export default function EmployeeHomePage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">
-          {greeting}, {session?.user?.name?.split(" ")[0]}
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          {format(new Date(), "EEEE, MMMM d, yyyy")}
-        </p>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            {greeting}, {session?.user?.name?.split(" ")[0]}
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            {format(new Date(), "EEEE, MMMM d, yyyy")}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground bg-surface-raised px-3 py-1.5 rounded-lg">
+            <Clock className="h-3.5 w-3.5" />
+            <span>Today: {formatDurationShort(todayTotal)}</span>
+          </div>
+        </div>
       </div>
 
       {loadingActive ? (
@@ -279,99 +318,145 @@ export default function EmployeeHomePage() {
           </div>
         </Card>
       ) : (
-        <Card className="border border-border p-6 rounded-xl">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Play className="h-5 w-5 text-primary" />
-            </div>
+        <>
+          {availableProjects.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Start Working</h2>
-              <p className="text-sm text-muted-foreground">Select a project and task to begin tracking</p>
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold text-foreground">Your Projects</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {availableProjects.map((project: any) => (
+                  <Card
+                    key={project.id}
+                    className="border border-border p-5 rounded-xl hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all cursor-pointer group"
+                    onClick={() => {
+                      setCheckinProject(project);
+                      setCheckinSubTask("");
+                      setCheckinNotes("");
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="w-3 h-3 rounded-full mt-1 shrink-0"
+                        style={{ backgroundColor: project.color }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                          {project.name}
+                        </h3>
+                        {project.description && (
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                            {project.description}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-2 mt-3">
+                          <Badge
+                            variant="outline"
+                            className="text-[11px] border-border text-muted-foreground"
+                          >
+                            {project.estimatedHours}h est.
+                          </Badge>
+                          <Badge
+                            variant="secondary"
+                            className="text-[11px] bg-primary/10 text-primary border-0"
+                          >
+                            {project.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Click to start working</span>
+                      <Play className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </Card>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
+          {availableProjects.length === 0 && (
+            <Card className="border border-border p-8 rounded-xl">
+              <div className="text-center">
+                <div className="p-3 rounded-full bg-surface-raised w-fit mx-auto mb-4">
+                  <BarChart3 className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-1">No Projects Assigned</h3>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  You are not assigned to any active projects yet. Contact your team leader or admin to get started.
+                </p>
+              </div>
+            </Card>
+          )}
+        </>
+      )}
+
+      <Dialog open={!!checkinProject} onOpenChange={(o) => { if (!o) { setCheckinProject(null); setCheckinSubTask(""); setCheckinNotes(""); } }}>
+        <DialogContent className="bg-surface-raised border-border">
+          <DialogHeader>
+            <DialogTitle className="text-foreground flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: checkinProject?.color }} />
+              Start Working &mdash; {checkinProject?.name}
+            </DialogTitle>
+          </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-foreground">Project</Label>
+              <Label className="text-foreground">SubTask</Label>
               <Select
-                value={selectedProject}
-                onValueChange={(v) => { if (v) setSelectedProject(v); setSelectedSubTask(""); }}
+                value={checkinSubTask}
+                onValueChange={(v) => { if (v) setCheckinSubTask(v); }}
               >
                 <SelectTrigger className="bg-surface border-border text-foreground">
-                  <SelectValue placeholder="Select a project" />
+                  <SelectValue placeholder="Select a task" />
                 </SelectTrigger>
                 <SelectContent className="bg-surface-raised border-border">
-                  {availableProjects.length === 0 ? (
+                  {filteredSubtasks.length === 0 ? (
                     <SelectItem value="__none" disabled>
-                      No projects assigned
+                      No tasks assigned to you yet
                     </SelectItem>
                   ) : (
-                    availableProjects.map((p: any) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-2.5 h-2.5 rounded-full"
-                            style={{ backgroundColor: p.color }}
-                          />
-                          {p.name}
-                        </div>
+                    filteredSubtasks.map((s: any) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
                       </SelectItem>
                     ))
                   )}
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="space-y-2">
-              <Label className="text-foreground">SubTask</Label>
-              <Select
-                value={selectedSubTask}
-                onValueChange={(v) => { if (v) setSelectedSubTask(v); }}
-                disabled={!selectedProject}
-              >
-                <SelectTrigger className="bg-surface border-border text-foreground">
-                  <SelectValue placeholder={selectedProject ? "Select a task" : "Choose a project first"} />
-                </SelectTrigger>
-                <SelectContent className="bg-surface-raised border-border">
-                  {filteredSubtasks.map((s: any) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
             <div className="space-y-2">
               <Label className="text-foreground">Notes (optional)</Label>
               <Textarea
                 placeholder="What are you working on?"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                value={checkinNotes}
+                onChange={(e) => setCheckinNotes(e.target.value)}
                 className="bg-surface border-border text-foreground placeholder:text-muted-foreground min-h-[80px]"
               />
             </div>
-
+          </div>
+          <DialogFooter>
             <Button
-              size="lg"
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-              disabled={!selectedProject || !selectedSubTask || checkinMutation.isPending}
-              onClick={() => checkinMutation.mutate()}
+              variant="outline"
+              onClick={() => { setCheckinProject(null); setCheckinSubTask(""); setCheckinNotes(""); }}
+              className="border-border text-foreground"
             >
-              {checkinMutation.isPending ? (
-                "Starting..."
-              ) : (
-                <>
-                  <Play className="h-4 w-4 mr-2" />
-                  Start Working
-                </>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => checkinMutation.mutate()}
+              disabled={!checkinSubTask || checkinMutation.isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              {checkinMutation.isPending ? "Starting..." : (
+                <><Play className="h-4 w-4 mr-2" /> Start Working</>
               )}
             </Button>
-          </div>
-        </Card>
-      )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      <Dialog open={showCheckoutModal} onOpenChange={setShowCheckoutModal}>
+      <Dialog open={showCheckoutModal} onOpenChange={(o) => { if (!o) setShowCheckoutModal(false); }}>
         <DialogContent className="bg-surface-raised border-border">
           <DialogHeader>
             <DialogTitle className="text-foreground">Check Out</DialogTitle>
@@ -386,6 +471,15 @@ export default function EmployeeHomePage() {
               onChange={(e) => setCheckoutNotes(e.target.value)}
               className="bg-surface border-border text-foreground placeholder:text-muted-foreground"
             />
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={markTaskDone}
+                onChange={(e) => setMarkTaskDone(e.target.checked)}
+                className="rounded border-border bg-surface text-primary focus:ring-primary"
+              />
+              <span className="text-sm text-foreground">Mark this task as completed</span>
+            </label>
           </div>
           <DialogFooter>
             <Button

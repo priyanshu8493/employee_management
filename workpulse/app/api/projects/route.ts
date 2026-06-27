@@ -1,21 +1,33 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { apiSuccess, apiError, handleApiError, requireRole } from "@/lib/api-utils";
+import { apiSuccess, apiError, handleApiError, requireRole, getAuthSession } from "@/lib/api-utils";
 import { projectSchema } from "@/lib/validations";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await requireRole("OWNER");
+    const session = await getAuthSession();
+    if (!session?.user?.id) return apiError("Unauthorized", "UNAUTHORIZED", 401);
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const teamId = searchParams.get("teamId");
     const search = searchParams.get("search");
 
     const where: Record<string, unknown> = {};
-    if (status) where.status = status;
-    if (teamId) {
+
+    // Non-OWNER roles can only see projects assigned to their team
+    if (session.user.role !== "OWNER") {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { teamId: true },
+      });
+      if (!user?.teamId) return apiSuccess([]);
+      where.projectTeams = { some: { teamId: user.teamId } };
+    } else if (teamId) {
       where.projectTeams = { some: { teamId } };
     }
+
+    if (status) where.status = status;
     if (search) {
       where.name = { contains: search, mode: "insensitive" };
     }

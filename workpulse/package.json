@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "npx tsx prisma/seed.ts",
-    "postinstall": "npx prisma generate"
+    "postinstall": "npx prisma generate",
+    "build:standalone": "next build && cp -r public .next/standalone/workpulse/public && cp -r .next/static .next/standalone/workpulse/.next/static",
+    "start:prod": "node .next/standalone/workpulse/server.js"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

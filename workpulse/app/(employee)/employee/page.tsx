@@ -413,7 +413,7 @@ export default function EmployeeHomePage() {
                 <SelectContent className="bg-surface-raised border-border">
                   {filteredSubtasks.length === 0 ? (
                     <SelectItem value="__none" disabled>
-                      No tasks assigned to you yet
+                      No available subtasks
                     </SelectItem>
                   ) : (
                     filteredSubtasks.map((s: any) => (

@@ -63,7 +63,6 @@ export async function POST(request: NextRequest) {
         return apiError("You already have an active session. Check out first.", "DOUBLE_CHECKIN", 400);
       }
 
-      // Verify the subtask exists and user is assigned
       const subtask = await prisma.subTask.findUnique({
         where: { id: parsed.subTaskId },
         select: {
@@ -77,11 +76,8 @@ export async function POST(request: NextRequest) {
       if (!subtask) {
         return apiError("SubTask not found", "NOT_FOUND", 404);
       }
-      if (subtask._count.assignments > 0 && subtask.assignments.length === 0) {
-        return apiError("This task is not assigned to you", "FORBIDDEN", 403);
-      }
 
-      // Auto-set subtask to IN_PROGRESS on check-in
+      // Auto-set subtask to IN_PROGRESS if the user is assigned to it
       const isAssigned = subtask.assignments.length > 0;
       if (isAssigned && subtask.status === "TODO") {
         await prisma.subTask.update({

@@ -9,16 +9,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const session = await getAuthSession();
     if (!session?.user?.id) return apiError("Unauthorized", "UNAUTHORIZED", 401);
 
-    const { searchParams } = new URL(request.url);
-    const showAll = searchParams.get("all") === "true";
-
     const where: Record<string, unknown> = { projectId: id };
-
-    // Employees only see subtasks assigned to them
-    // ?all=true bypasses this (used by team-tasks assignment page)
-    if (session.user.role === "EMPLOYEE" && !showAll) {
-      where.assignments = { some: { userId: session.user.id } };
-    }
 
     const subtasks = await prisma.subTask.findMany({
       where,

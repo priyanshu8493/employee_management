@@ -6,7 +6,22 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "@/lib/utils"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
-const Select = SelectPrimitive.Root
+const SelectLabelContext = React.createContext<Map<string, string>>(new Map());
+
+function Select<Value, Multiple extends boolean | undefined = false>({
+  children,
+  ...props
+}: SelectPrimitive.Root.Props<Value, Multiple>) {
+  const labelMapRef = React.useRef(new Map<string, string>());
+
+  return (
+    <SelectLabelContext.Provider value={labelMapRef.current}>
+      <SelectPrimitive.Root<Value, Multiple> {...props}>
+        {children}
+      </SelectPrimitive.Root>
+    </SelectLabelContext.Provider>
+  );
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (
@@ -18,13 +33,24 @@ function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   )
 }
 
-function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
+function SelectValue({ className, children, placeholder, ...props }: SelectPrimitive.Value.Props) {
+  const labelMap = React.useContext(SelectLabelContext);
+
   return (
     <SelectPrimitive.Value
       data-slot="select-value"
       className={cn("flex flex-1 text-left", className)}
+      placeholder={placeholder}
       {...props}
-    />
+    >
+      {(value: string | null) => {
+        if (value === null) {
+          return placeholder ?? "";
+        }
+        const label = labelMap.get(String(value));
+        return label ?? String(value);
+      }}
+    </SelectPrimitive.Value>
   )
 }
 
@@ -113,6 +139,20 @@ function SelectItem({
   children,
   ...props
 }: SelectPrimitive.Item.Props) {
+  const labelMap = React.useContext(SelectLabelContext);
+  const value = (props as Record<string, unknown>).value;
+
+  React.useEffect(() => {
+    if (value != null && children != null) {
+      const text = typeof children === "string" ? children :
+                   typeof children === "number" ? String(children) :
+                   "";
+      if (text) {
+        labelMap.set(String(value), text);
+      }
+    }
+  }, [value, children, labelMap]);
+
   return (
     <SelectPrimitive.Item
       data-slot="select-item"

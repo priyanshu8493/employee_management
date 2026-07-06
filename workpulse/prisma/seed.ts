@@ -33,6 +33,7 @@ async function main() {
   });
 
   console.log(`Created owner: ${owner.email}`);
+  const passwordHash = await bcrypt.hash("Pass@1234", 12);
 
   // Teams
   const designTeam = await prisma.team.create({

@@ -21,13 +21,26 @@ async function main() {
   console.log("Creating owner...");
   
   // 3. Create the Owner account WITH the hashed password
+  // const owner = await prisma.user.upsert({
+  //   where: { email: 'owner@workpulse.com' },
+  //   update: {},
+  //   create: {
+  //     email: 'owner@workpulse.com',
+  //     name: 'Owner',
+  //     passwordHash: hashedPassword, // MUST use the hashed password here
+  //     role: 'OWNER',
+  //   },
+  // });
+
   const owner = await prisma.user.upsert({
     where: { email: 'owner@workpulse.com' },
-    update: {},
+    update: {
+      passwordHash: hashedPassword, // This forces the database to update the password hash!
+    },
     create: {
       email: 'owner@workpulse.com',
       name: 'Owner',
-      passwordHash: hashedPassword, // MUST use the hashed password here
+      passwordHash: hashedPassword,
       role: 'OWNER',
     },
   });

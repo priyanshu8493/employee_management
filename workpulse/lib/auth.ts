@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import type { Role } from "@prisma/client";
 
@@ -19,7 +19,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return null;
           }
 
-          // Ensure email is lowercase and trimmed to prevent accidental mismatch
           const email = (credentials.email as string).toLowerCase().trim();
           const password = credentials.password as string;
 
@@ -32,21 +31,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return null;
           }
 
-          // Only block if the account is EXPLICITLY disabled in the DB
           if (user.isActive === false) {
             console.error(`Auth Error: Account for ${email} is inactive`);
             return null;
           }
 
           if (!user.passwordHash) {
-            console.error(`Auth Error: User ${email} has no password set in database`);
+            console.error(`Auth Error: User ${email} has no password set`);
             return null;
           }
 
-          const isValid = await bcrypt.compare(password, user.passwordHash);
+          // Generate an environment-safe, deterministic SHA-256 hash
+          const incomingHash = crypto.createHash("sha256").update(password).digest("hex");
 
-          if (!isValid) {
-            console.error(`Auth Error: Invalid password provided for ${email}`);
+          if (incomingHash !== user.passwordHash) {
+            console.error(`Auth Error: Hash mismatch.`);
+            console.error(`Stored in DB: ${user.passwordHash}`);
+            console.error(`Generated now: ${incomingHash}`);
             return null;
           }
 
@@ -94,6 +95,5 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     strategy: "jwt",
     maxAge: 7 * 24 * 60 * 60,
   },
-  // Ensure we check both common secret variables safely
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
 });

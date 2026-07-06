@@ -1,38 +1,14 @@
-
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { PrismaClient } from "@prisma/client";
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
-
-// import "dotenv/config";
-// import bcrypt from "bcryptjs";
-// import { PrismaClient } from "@prisma/client";
-
-// const prisma = new PrismaClient();
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
-});
-
-
-const adapter = new PrismaPg(pool);
-
-// 3. Pass the adapter to Prisma (Required in v7+)
-const prisma = new PrismaClient({ adapter });
-
-
-// const prisma = new PrismaClient();
-
-
+import { prisma } from "../lib/prisma";
 
 async function main() {
   console.log("Seeding database...");
 
-  // Clean existing data
+  // 1. Generate the secure password hash for the owner
+  const hashedPassword = await bcrypt.hash("Admin@1234", 12);
+
+  // 2. Clear existing data to avoid conflicts
   await prisma.qcMistake.deleteMany();
   await prisma.qcReport.deleteMany();
   await prisma.timeEntry.deleteMany();
@@ -41,22 +17,22 @@ async function main() {
   await prisma.project.deleteMany();
   await prisma.user.deleteMany();
   await prisma.team.deleteMany();
-  await prisma.account.deleteMany();
-  await prisma.session.deleteMany();
 
-  const passwordHash = await bcrypt.hash("Admin@1234", 12);
-
-  // Owner
-  const owner = await prisma.user.create({
-    data: {
-      email: "owner@workpulse.com",
-      passwordHash,
-      name: "Alex Turner",
-      role: "OWNER",
-      isActive: true,
+  console.log("Creating owner...");
+  
+  // 3. Create the Owner account WITH the hashed password
+  const owner = await prisma.user.upsert({
+    where: { email: 'owner@workpulse.com' },
+    update: {},
+    create: {
+      email: 'owner@workpulse.com',
+      name: 'Owner',
+      passwordHash: hashedPassword, // MUST use the hashed password here
+      role: 'OWNER',
     },
   });
-  console.log("Created owner:", owner.email);
+
+  console.log(`Created owner: ${owner.email}`);
 
   // Teams
   const designTeam = await prisma.team.create({

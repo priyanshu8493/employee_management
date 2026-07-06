@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import type { Role } from "@prisma/client";
 
@@ -41,13 +41,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return null;
           }
 
-          // Generate an environment-safe, deterministic SHA-256 hash
-          const incomingHash = crypto.createHash("sha256").update(password).digest("hex");
+          const isValid = await bcrypt.compare(password, user.passwordHash);
 
-          if (incomingHash !== user.passwordHash) {
-            console.error(`Auth Error: Hash mismatch.`);
-            console.error(`Stored in DB: ${user.passwordHash}`);
-            console.error(`Generated now: ${incomingHash}`);
+          if (!isValid) {
+            console.error(`Auth Error: Invalid password for ${email}`);
             return null;
           }
 

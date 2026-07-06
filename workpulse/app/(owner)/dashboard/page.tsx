@@ -14,7 +14,9 @@ import {
   AlertTriangle,
   CheckCircle2,
   Activity,
+  CalendarOff,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import {
   BarChart,
   Bar,
@@ -46,6 +48,7 @@ export default function DashboardOverviewPage() {
   const kpi = data?.kpi;
   const projects = data?.projectHealth || [];
   const todayActivity = data?.todayActivity || [];
+  const todayLeaves = data?.todayLeaves || [];
   const weeklyChart = data?.weeklyChart || [];
 
   // Aggregate weekly data for stacked chart
@@ -177,6 +180,34 @@ export default function DashboardOverviewPage() {
             description="Projects finished"
           />
         </div>
+      )}
+
+      {todayLeaves.length > 0 && (
+        <Card className="border border-border p-5 rounded-xl">
+          <div className="flex items-center gap-2 mb-4">
+            <CalendarOff className="h-5 w-5 text-warning" />
+            <h3 className="text-sm font-medium text-foreground">On Leave Today</h3>
+            <Badge variant="secondary" className="bg-warning/10 text-warning border-0">{todayLeaves.length}</Badge>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {todayLeaves.map((leave: any) => (
+              <div
+                key={leave.id}
+                className="flex items-center gap-3 p-3 rounded-lg bg-surface-raised border border-border"
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-warning/20 text-warning text-xs">
+                    {leave.user?.name?.split(" ").map((n: string) => n[0]).join("")}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{leave.user?.name}</p>
+                  <p className="text-xs text-muted-foreground">{leave.user?.team?.name || "No team"}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

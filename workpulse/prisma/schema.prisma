@@ -42,6 +42,7 @@ model User {
   timeEntries    TimeEntry[]
   assignedSubTasks SubTask[]
   qcReports      QcReport[]   @relation("QcTeamLead")
+  leaves         Leave[]
   qcMistakes     QcMistake[]
   accounts     Account[]
   sessions     Session[]
@@ -183,6 +184,20 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
+}
+
+model Leave {
+  id        String   @id @default(cuid())
+  userId    String
+  date      DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("leaves")
 }
 
 model VerificationToken {

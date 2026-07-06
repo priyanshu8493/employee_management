@@ -16,6 +16,7 @@ import {
   X,
   Clock,
   ShieldCheck,
+  CalendarOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -27,6 +28,7 @@ const navItems = [
   { href: "/dashboard/projects", label: "Projects", icon: Briefcase },
   { href: "/dashboard/employees", label: "Employees", icon: Users },
   { href: "/dashboard/teams", label: "Teams", icon: Group },
+  { href: "/dashboard/leaves", label: "Leaves", icon: CalendarOff },
   { href: "/dashboard/qc", label: "QC Reports", icon: ShieldCheck },
   { href: "/dashboard/live", label: "Live Activity", icon: Radio },
   { href: "/dashboard/reports", label: "Reports", icon: FileBarChart },

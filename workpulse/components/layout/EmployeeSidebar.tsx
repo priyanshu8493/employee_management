@@ -14,6 +14,7 @@ import {
   X,
   AlertTriangle,
   Users,
+  CalendarOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -24,6 +25,7 @@ const employeeNavItems = [
   { href: "/employee", label: "Home", icon: Home },
   { href: "/employee/time", label: "My Time", icon: Clock },
   { href: "/employee/history", label: "History", icon: History },
+  { href: "/employee/leaves", label: "Leaves", icon: CalendarOff },
   { href: "/employee/qc-flags", label: "QC Flags", icon: AlertTriangle },
   { href: "/employee/profile", label: "Profile", icon: User },
 ];

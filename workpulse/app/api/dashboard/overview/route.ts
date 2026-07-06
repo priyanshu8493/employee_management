@@ -92,6 +92,14 @@ export async function GET() {
       }
     }
 
+    const todayLeaves = await prisma.leave.findMany({
+      where: { date: startOfDay },
+      include: {
+        user: { select: { id: true, name: true, email: true, avatarUrl: true, team: { select: { id: true, name: true } } } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
     // Weekly data for chart
     const weekDays: { date: Date; dayName: string; hours: Record<string, number> }[] = [];
     for (let i = 0; i < 7; i++) {
@@ -130,6 +138,7 @@ export async function GET() {
       },
       projectHealth: projectsWithHealth,
       todayActivity: Array.from(todayMap.values()),
+      todayLeaves,
       weeklyChart: weekDays,
     });
   } catch (error) {

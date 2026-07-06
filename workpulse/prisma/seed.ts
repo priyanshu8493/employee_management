@@ -1,12 +1,33 @@
+
 import "dotenv/config";
+import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
-import bcrypt from "bcryptjs";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// import "dotenv/config";
+// import bcrypt from "bcryptjs";
+// import { PrismaClient } from "@prisma/client";
+
+// const prisma = new PrismaClient();
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
+
+
 const adapter = new PrismaPg(pool);
+
+// 3. Pass the adapter to Prisma (Required in v7+)
 const prisma = new PrismaClient({ adapter });
+
+
+// const prisma = new PrismaClient();
+
+
 
 async function main() {
   console.log("Seeding database...");

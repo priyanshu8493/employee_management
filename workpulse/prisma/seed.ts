@@ -46,7 +46,6 @@ async function main() {
   });
 
   console.log(`Created owner: ${owner.email}`);
-  const passwordHash = await bcrypt.hash("Pass@1234", 12);
 
   // Teams
   const designTeam = await prisma.team.create({
@@ -62,7 +61,7 @@ async function main() {
     prisma.user.create({
       data: {
         email: "sarah@workpulse.com",
-        passwordHash,
+        passwordHash: hashedPassword,
         name: "Sarah Chen",
         role: "EMPLOYEE",
         teamId: designTeam.id,
@@ -73,7 +72,7 @@ async function main() {
     prisma.user.create({
       data: {
         email: "alex@workpulse.com",
-        passwordHash,
+        passwordHash: hashedPassword,
         name: "Alex Rivera",
         role: "EMPLOYEE",
         teamId: engineeringTeam.id,
@@ -84,7 +83,7 @@ async function main() {
     prisma.user.create({
       data: {
         email: "priya@workpulse.com",
-        passwordHash,
+        passwordHash: hashedPassword,
         name: "Priya Patel",
         role: "EMPLOYEE",
         teamId: engineeringTeam.id,
@@ -100,7 +99,7 @@ async function main() {
     prisma.user.create({
       data: {
         email: "maya@workpulse.com",
-        passwordHash,
+        passwordHash: hashedPassword,
         name: "Maya Johnson",
         role: "TEAM_LEADER",
         teamId: designTeam.id,
@@ -111,7 +110,7 @@ async function main() {
     prisma.user.create({
       data: {
         email: "james@workpulse.com",
-        passwordHash,
+        passwordHash: hashedPassword,
         name: "James Wilson",
         role: "TEAM_LEADER",
         teamId: engineeringTeam.id,

@@ -42,7 +42,8 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        toast.error("Invalid email or password");
+        console.error("Login error:", result.error);
+        toast.error(result.error === "CredentialsSignin" ? "Invalid email or password" : "Login failed. Check console for details.");
         return;
       }
 
@@ -54,8 +55,9 @@ export default function LoginPage() {
       } else {
         router.push("/employee");
       }
-    } catch {
-      toast.error("Something went wrong");
+    } catch (err) {
+      console.error("Login exception:", err);
+      toast.error("Something went wrong. Check console for details.");
     } finally {
       setLoading(false);
     }

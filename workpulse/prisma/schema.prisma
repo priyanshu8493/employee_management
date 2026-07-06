@@ -37,10 +37,10 @@ model User {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   teamId       String?
-  team         Team?        @relation("TeamMembers", fields: [teamId], references: [id])
-  teamLeadOf   Team?        @relation("TeamLead")
+  team         Team?             @relation("TeamMembers", fields: [teamId], references: [id])
+  teamLeads    TeamLead[]
   timeEntries    TimeEntry[]
-  assignedSubTasks SubTask[]
+  subTaskAssignments SubTaskAssignment[]
   qcReports      QcReport[]   @relation("QcTeamLead")
   leaves         Leave[]
   qcMistakes     QcMistake[]
@@ -54,11 +54,10 @@ model Team {
   id          String        @id @default(cuid())
   name        String
   description String?
-  teamLeadId  String?       @unique
-  teamLead    User?         @relation("TeamLead", fields: [teamLeadId], references: [id])
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   members     User[]        @relation("TeamMembers")
+  teamLeads   TeamLead[]
   projectTeams ProjectTeam[]
   qcReports   QcReport[]
 
@@ -69,6 +68,7 @@ model Project {
   id              String         @id @default(cuid())
   name            String
   description     String?
+  clientName      String?
   color           String         @default("#6C63FF")
   status          ProjectStatus  @default(ACTIVE)
   estimatedHours  Float          @default(0)
@@ -100,13 +100,12 @@ model SubTask {
   description    String?
   status         SubTaskStatus  @default(TODO)
   estimatedHours Float?
-  assignedToId   String?
-  assignedTo     User?          @relation(fields: [assignedToId], references: [id])
   projectId      String
   project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   timeEntries    TimeEntry[]
+  assignments    SubTaskAssignment[]
 
   @@map("sub_tasks")
 }
@@ -184,6 +183,28 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
+}
+
+model TeamLead {
+  teamId     String
+  userId     String
+  assignedAt DateTime @default(now())
+  team       Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+  @@map("team_leads")
+}
+
+model SubTaskAssignment {
+  subTaskId  String
+  userId     String
+  assignedAt DateTime @default(now())
+  subTask    SubTask  @relation(fields: [subTaskId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([subTaskId, userId])
+  @@map("sub_task_assignments")
 }
 
 model Leave {

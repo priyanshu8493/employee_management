@@ -60,20 +60,27 @@ export async function POST(request: NextRequest) {
 
     const teamLead = await prisma.user.findUnique({
       where: { id: session.user.id },
-      include: { team: { select: { id: true, teamLeadId: true } } },
+      select: { teamId: true },
     });
 
-    if (!teamLead?.team) {
+    if (!teamLead?.teamId) {
       return apiError("You are not assigned to a team", "NO_TEAM", 400);
     }
 
-    if (teamLead.team.teamLeadId !== teamLead.id && session.user.role !== "OWNER") {
-      return apiError("You are not the team leader of your team", "NOT_TEAM_LEADER", 403);
+    const isTeamLead = await prisma.teamLead.findUnique({
+      where: { teamId_userId: { teamId: teamLead.teamId, userId: session.user.id } },
+    });
+
+    if (!isTeamLead && session.user.role !== "OWNER") {
+      return apiError("You are not a team leader of your team", "NOT_TEAM_LEADER", 403);
     }
+
+    const team = await prisma.team.findUnique({ where: { id: teamLead.teamId } });
+    if (!team) return apiError("Team not found", "NOT_FOUND", 404);
 
     const report = await prisma.qcReport.create({
       data: {
-        teamId: teamLead.team.id,
+        teamId: teamLead.teamId,
         teamLeadId: session.user.id,
         summary: parsed.summary,
         date: parsed.date ? new Date(parsed.date) : new Date(),

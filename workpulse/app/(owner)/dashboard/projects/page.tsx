@@ -41,6 +41,7 @@ export default function ProjectsPage() {
   const [form, setForm] = useState({
     name: "",
     description: "",
+    clientName: "",
     color: "#6C63FF",
     estimatedHours: 0,
     startDate: "",
@@ -85,7 +86,7 @@ export default function ProjectsPage() {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       toast.success("Project created");
       setShowCreate(false);
-      setForm({ name: "", description: "", color: "#6C63FF", estimatedHours: 0, startDate: "", endDate: "", teamIds: [] });
+      setForm({ name: "", description: "", clientName: "", color: "#6C63FF", estimatedHours: 0, startDate: "", endDate: "", teamIds: [] });
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -116,6 +117,11 @@ export default function ProjectsPage() {
           <span className="font-medium">{p.name}</span>
         </div>
       ),
+    },
+    {
+      key: "clientName",
+      header: "Client",
+      render: (p: any) => <span className="text-muted-foreground text-sm">{p.clientName || "—"}</span>,
     },
     {
       key: "status",
@@ -250,7 +256,7 @@ export default function ProjectsPage() {
                   onClick={() => router.push(`/dashboard/projects/${project.id}`)}
                   style={{ borderLeft: `3px solid ${project.color}` }}
                 >
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-1">
                     <h3 className="font-semibold text-foreground">{project.name}</h3>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       project.status === "ACTIVE" ? "bg-success/10 text-success" :
@@ -258,6 +264,9 @@ export default function ProjectsPage() {
                       "bg-muted text-muted-foreground"
                     }`}>{project.status}</span>
                   </div>
+                  {project.clientName && (
+                    <p className="text-xs text-muted-foreground mb-3">Client: {project.clientName}</p>
+                  )}
                   <ProgressBar
                     value={Math.round(totalHours * 10) / 10}
                     max={project.estimatedHours || 1}
@@ -306,6 +315,15 @@ export default function ProjectsPage() {
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                 className="bg-surface border-border text-foreground placeholder:text-muted-foreground"
                 placeholder="Brief description..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-foreground">Client Name</Label>
+              <Input
+                value={form.clientName}
+                onChange={(e) => setForm((p) => ({ ...p, clientName: e.target.value }))}
+                className="bg-surface border-border text-foreground"
+                placeholder="Client or organization"
               />
             </div>
             <div className="space-y-2">

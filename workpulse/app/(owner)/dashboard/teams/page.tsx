@@ -34,8 +34,8 @@ export default function TeamsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editTeam, setEditTeam] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", description: "", memberIds: [] as string[], teamLeadId: "" });
-  const [editForm, setEditForm] = useState({ name: "", description: "", memberIds: [] as string[], teamLeadId: "" });
+  const [form, setForm] = useState({ name: "", description: "", memberIds: [] as string[], teamLeadIds: [] as string[] });
+  const [editForm, setEditForm] = useState({ name: "", description: "", memberIds: [] as string[], teamLeadIds: [] as string[] });
 
   const { data: teams, isLoading } = useQuery({
     queryKey: ["teams"],
@@ -72,7 +72,7 @@ export default function TeamsPage() {
       queryClient.invalidateQueries({ queryKey: ["teams"] });
       toast.success("Team created");
       setShowCreate(false);
-      setForm({ name: "", description: "", memberIds: [], teamLeadId: "" });
+      setForm({ name: "", description: "", memberIds: [], teamLeadIds: [] });
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -117,7 +117,7 @@ export default function TeamsPage() {
       name: team.name,
       description: team.description || "",
       memberIds: (team.members || []).map((m: any) => m.id),
-      teamLeadId: team.teamLead?.id || "",
+      teamLeadIds: (team.teamLeads || []).map((tl: any) => tl.user?.id).filter(Boolean),
     });
   };
 
@@ -152,13 +152,17 @@ export default function TeamsPage() {
       render: (t: any) => <span className="text-muted-foreground text-sm">{t.description || "--"}</span>,
     },
     {
-      key: "teamLead",
-      header: "Team Leader",
+      key: "teamLeads",
+      header: "Team Leaders",
       render: (t: any) => (
-        t.teamLead ? (
-          <div className="flex items-center gap-1.5">
-            <Crown className="h-3.5 w-3.5 text-warning" />
-            <span className="text-sm">{t.teamLead.name}</span>
+        t.teamLeads?.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {t.teamLeads.map((tl: any) => (
+              <div key={tl.userId} className="flex items-center gap-1 bg-warning/10 text-warning text-xs px-2 py-0.5 rounded-full">
+                <Crown className="h-3 w-3" />
+                <span>{tl.user?.name}</span>
+              </div>
+            ))}
           </div>
         ) : (
           <span className="text-muted-foreground text-sm">--</span>
@@ -258,20 +262,35 @@ export default function TeamsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-foreground">Team Leader</Label>
-              <Select
-                value={form.teamLeadId}
-                onValueChange={(v) => setForm((p) => ({ ...p, teamLeadId: v || "" }))}
-              >
-                <SelectTrigger className="bg-surface border-border text-foreground">
-                  <SelectValue placeholder="Select team leader" />
-                </SelectTrigger>
-                <SelectContent className="bg-surface-raised border-border">
-                  {(allEmployees || []).map((e: any) => (
-                    <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-foreground">
+                Team Leaders ({form.teamLeadIds.length} selected)
+              </Label>
+              <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-lg border border-border p-2">
+                {(allEmployees || []).length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-2">No employees available</p>
+                ) : (
+                  (allEmployees || []).filter((e: any) => e.role === "TEAM_LEADER" || e.role === "EMPLOYEE").map((e: any) => (
+                    <label
+                      key={e.id}
+                      className="flex items-center gap-2.5 p-2 rounded-md hover:bg-surface cursor-pointer text-sm"
+                    >
+                      <Checkbox
+                        checked={form.teamLeadIds.includes(e.id)}
+                        onCheckedChange={() => {
+                          setForm((p) => ({
+                            ...p,
+                            teamLeadIds: p.teamLeadIds.includes(e.id)
+                              ? p.teamLeadIds.filter((id) => id !== e.id)
+                              : [...p.teamLeadIds, e.id],
+                          }));
+                        }}
+                      />
+                      <span className="text-foreground">{e.name}</span>
+                      <span className="text-muted-foreground text-xs ml-auto">{e.role}</span>
+                    </label>
+                  ))
+                )}
+              </div>
             </div>
             <div className="space-y-2">
               <Label className="text-foreground">
@@ -332,21 +351,35 @@ export default function TeamsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-foreground">Team Leader</Label>
-                <Select
-                  value={editForm.teamLeadId}
-                  onValueChange={(v) => setEditForm((p) => ({ ...p, teamLeadId: v || "" }))}
-                >
-                  <SelectTrigger className="bg-surface border-border text-foreground">
-                    <SelectValue placeholder="Select team leader" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-surface-raised border-border">
-                    <SelectItem value="">None</SelectItem>
-                    {(allEmployees || []).map((e: any) => (
-                      <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="text-foreground">
+                  Team Leaders ({editForm.teamLeadIds.length} selected)
+                </Label>
+                <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-lg border border-border p-2">
+                  {(allEmployees || []).length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-2">No employees available</p>
+                  ) : (
+                    (allEmployees || []).filter((e: any) => e.role === "TEAM_LEADER" || e.role === "EMPLOYEE").map((e: any) => (
+                      <label
+                        key={e.id}
+                        className="flex items-center gap-2.5 p-2 rounded-md hover:bg-surface cursor-pointer text-sm"
+                      >
+                        <Checkbox
+                          checked={editForm.teamLeadIds.includes(e.id)}
+                          onCheckedChange={() => {
+                            setEditForm((p) => ({
+                              ...p,
+                              teamLeadIds: p.teamLeadIds.includes(e.id)
+                                ? p.teamLeadIds.filter((id) => id !== e.id)
+                                : [...p.teamLeadIds, e.id],
+                            }));
+                          }}
+                        />
+                        <span className="text-foreground">{e.name}</span>
+                        <span className="text-muted-foreground text-xs ml-auto">{e.role}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label className="text-foreground">
@@ -383,7 +416,7 @@ export default function TeamsPage() {
                       data: {
                         name: editForm.name,
                         description: editForm.description,
-                        teamLeadId: editForm.teamLeadId || null,
+                        teamLeadIds: editForm.teamLeadIds,
                         memberIds: editForm.memberIds,
                       },
                     });

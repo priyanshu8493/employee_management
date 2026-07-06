@@ -16,18 +16,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const data: Record<string, unknown> = {};
     if (parsed.name !== undefined) data.name = parsed.name;
     if (parsed.description !== undefined) data.description = parsed.description;
-    if (parsed.teamLeadId !== undefined) {
-      if (parsed.teamLeadId) {
-        data.teamLead = { connect: { id: parsed.teamLeadId } };
-      } else {
-        data.teamLead = { disconnect: true };
-      }
-    }
 
     const team = await prisma.team.update({
       where: { id },
       data: {
         ...data,
+        teamLeads: parsed.teamLeadIds
+          ? {
+              deleteMany: {},
+              create: parsed.teamLeadIds.map((userId) => ({ userId })),
+            }
+          : undefined,
         members: parsed.memberIds
           ? { set: parsed.memberIds.map((id) => ({ id })) }
           : undefined,
@@ -35,7 +34,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       include: {
         _count: { select: { members: true, projectTeams: true } },
         members: { select: { id: true, name: true, avatarUrl: true } },
-        teamLead: { select: { id: true, name: true, avatarUrl: true } },
+        teamLeads: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
       },
     });
 

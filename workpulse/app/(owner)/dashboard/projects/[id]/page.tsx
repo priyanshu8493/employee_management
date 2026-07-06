@@ -55,9 +55,11 @@ export default function ProjectDetailPage() {
   const [showAddSubtask, setShowAddSubtask] = useState(false);
   const [editSubtask, setEditSubtask] = useState<any>(null);
   const [deleteSubtaskId, setDeleteSubtaskId] = useState<string | null>(null);
-  const [newSubtask, setNewSubtask] = useState({ name: "", description: "", estimatedHours: 0 });
+  const [newSubtask, setNewSubtask] = useState({ name: "", description: "", estimatedHours: 0, assignedToIds: [] as string[] });
   const [newTeamIds, setNewTeamIds] = useState<string[]>([]);
   const [showTeamAssignment, setShowTeamAssignment] = useState(false);
+  const [assignSubtask, setAssignSubtask] = useState<any>(null);
+  const [assignSelectedIds, setAssignSelectedIds] = useState<string[]>([]);
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
@@ -134,7 +136,7 @@ export default function ProjectDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["project", id] });
       toast.success("Subtask created");
       setShowAddSubtask(false);
-      setNewSubtask({ name: "", description: "", estimatedHours: 0 });
+      setNewSubtask({ name: "", description: "", estimatedHours: 0, assignedToIds: [] });
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -238,11 +240,20 @@ export default function ProjectDetailPage() {
       render: (s: any) => <span className="font-medium">{s.name}</span>,
     },
     {
-      key: "assignedTo",
+      key: "assignments",
       header: "Assigned To",
       render: (s: any) => {
-        if (s.assignedTo) {
-          return <span className="text-sm">{s.assignedTo.name}</span>;
+        const assignees = s.assignments || [];
+        if (assignees.length > 0) {
+          return (
+            <div className="flex flex-wrap gap-1">
+              {assignees.map((a: any) => (
+                <span key={a.userId} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                  {a.user?.name}
+                </span>
+              ))}
+            </div>
+          );
         }
         return <span className="text-muted-foreground text-sm italic">Unassigned</span>;
       },
@@ -280,24 +291,37 @@ export default function ProjectDetailPage() {
     {
       key: "assign",
       header: "Assign",
-      render: (s: any) => (
-        <Select
-          value={s.assignedTo?.id || ""}
-          onValueChange={(v) => {
-            if (v) updateSubtaskMutation.mutate({ subtaskId: s.id, data: { assignedToId: v } });
-          }}
-        >
-          <SelectTrigger className="w-36 h-7 bg-surface border-border text-xs">
-            <SelectValue placeholder="Assign..." />
-          </SelectTrigger>
-          <SelectContent className="bg-surface-raised border-border">
-            <SelectItem value="">Unassign</SelectItem>
-            {teamMembers.map((m: any) => (
-              <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      ),
+      render: (s: any) => {
+        const assignedIds = (s.assignments || []).map((a: any) => a.userId);
+        return (
+          <div className="flex items-center gap-1">
+            <div className="flex flex-wrap gap-1">
+              {assignedIds.slice(0, 2).map((id: string) => {
+                const member = teamMembers.find((m: any) => m.id === id);
+                return member ? (
+                  <span key={id} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                    {member.name?.split(" ")[0]}
+                  </span>
+                ) : null;
+              })}
+              {assignedIds.length > 2 && (
+                <span className="text-xs text-muted-foreground">+{assignedIds.length - 2}</span>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 text-muted-foreground"
+              onClick={() => {
+                setAssignSubtask(s);
+                setAssignSelectedIds(assignedIds);
+              }}
+            >
+              <Edit3 className="h-3 w-3" />
+            </Button>
+          </div>
+        );
+      },
     },
     {
       key: "actions",
@@ -357,6 +381,9 @@ export default function ProjectDetailPage() {
             {project.description && (
               <p className="text-muted-foreground">{project.description}</p>
             )}
+            {project.clientName && (
+              <p className="text-sm text-muted-foreground">Client: {project.clientName}</p>
+            )}
             <div className="flex gap-4 text-sm text-muted-foreground">
               <span>Start: {formatDate(project.startDate)}</span>
               {project.endDate && <span>End: {formatDate(project.endDate)}</span>}
@@ -404,6 +431,15 @@ export default function ProjectDetailPage() {
               />
             </div>
             <div className="space-y-2">
+              <Label className="text-foreground">Client Name</Label>
+              <Input
+                defaultValue={project.clientName}
+                id="edit-clientName"
+                className="bg-surface border-border text-foreground"
+                placeholder="Client or organization"
+              />
+            </div>
+            <div className="space-y-2">
               <Label className="text-foreground">Estimated Hours</Label>
               <Input
                 type="number"
@@ -438,9 +474,10 @@ export default function ProjectDetailPage() {
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={() => {
                 const name = (document.getElementById("edit-name") as HTMLInputElement)?.value;
+                const clientName = (document.getElementById("edit-clientName") as HTMLInputElement)?.value;
                 const hours = parseFloat((document.getElementById("edit-hours") as HTMLInputElement)?.value || "0");
                 const color = (document.getElementById("edit-color") as HTMLInputElement)?.value;
-                if (name) updateMutation.mutate({ name, estimatedHours: hours, color });
+                if (name) updateMutation.mutate({ name, clientName: clientName || undefined, estimatedHours: hours, color });
               }}
             >
               Save
@@ -604,6 +641,36 @@ export default function ProjectDetailPage() {
                 className="bg-surface border-border text-foreground"
               />
             </div>
+            <div className="space-y-2">
+              <Label className="text-foreground">
+                Assign To ({newSubtask.assignedToIds.length} selected)
+              </Label>
+              <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-lg border border-border p-2">
+                {teamMembers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-2">No team members available</p>
+                ) : (
+                  teamMembers.map((m: any) => (
+                    <label
+                      key={m.id}
+                      className="flex items-center gap-2.5 p-2 rounded-md hover:bg-surface cursor-pointer text-sm"
+                    >
+                      <Checkbox
+                        checked={newSubtask.assignedToIds.includes(m.id)}
+                        onCheckedChange={() => {
+                          setNewSubtask((p) => ({
+                            ...p,
+                            assignedToIds: p.assignedToIds.includes(m.id)
+                              ? p.assignedToIds.filter((id) => id !== m.id)
+                              : [...p.assignedToIds, m.id],
+                          }));
+                        }}
+                      />
+                      <span className="text-foreground">{m.name}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={() => setShowAddSubtask(false)} className="border-border text-foreground">
                 Cancel
@@ -654,6 +721,57 @@ export default function ProjectDetailPage() {
                     const name = (document.getElementById("edit-st-name") as HTMLInputElement)?.value;
                     const description = (document.getElementById("edit-st-desc") as HTMLTextAreaElement)?.value;
                     if (name) updateSubtaskMutation.mutate({ subtaskId: editSubtask.id, data: { name, description } });
+                  }}
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign members to subtask */}
+      <Dialog open={!!assignSubtask} onOpenChange={() => setAssignSubtask(null)}>
+        <DialogContent className="bg-surface-raised border-border max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Assign Members</DialogTitle>
+          </DialogHeader>
+          {assignSubtask && (
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              <p className="text-sm text-muted-foreground">{assignSubtask.name}</p>
+              {teamMembers.length === 0 ? (
+                <p className="text-muted-foreground text-sm text-center py-4">No team members available</p>
+              ) : (
+                teamMembers.map((m: any) => (
+                  <label
+                    key={m.id}
+                    className="flex items-center gap-2.5 p-2.5 rounded-lg hover:bg-surface cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={assignSelectedIds.includes(m.id)}
+                      onCheckedChange={(checked) => {
+                        setAssignSelectedIds((prev) =>
+                          checked ? [...prev, m.id] : prev.filter((id) => id !== m.id)
+                        );
+                      }}
+                    />
+                    <span className="text-sm font-medium text-foreground">{m.name}</span>
+                  </label>
+                ))
+              )}
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="outline" onClick={() => setAssignSubtask(null)} className="border-border text-foreground">
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  onClick={() => {
+                    updateSubtaskMutation.mutate({
+                      subtaskId: assignSubtask.id,
+                      data: { assignedToIds: assignSelectedIds },
+                    });
+                    setAssignSubtask(null);
                   }}
                 >
                   Save

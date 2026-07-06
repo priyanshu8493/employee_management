@@ -111,13 +111,11 @@ async function main() {
   ]);
 
   // Assign team leaders to their teams
-  await prisma.team.update({
-    where: { id: designTeam.id },
-    data: { teamLeadId: teamLeaders[0].id },
-  });
-  await prisma.team.update({
-    where: { id: engineeringTeam.id },
-    data: { teamLeadId: teamLeaders[1].id },
+  await prisma.teamLead.createMany({
+    data: [
+      { teamId: designTeam.id, userId: teamLeaders[0].id },
+      { teamId: engineeringTeam.id, userId: teamLeaders[1].id },
+    ],
   });
   console.log("Team leaders created");
 
@@ -127,6 +125,7 @@ async function main() {
       data: {
         name: "Website Redesign",
         description: "Complete overhaul of the company website with new branding",
+        clientName: "Acme Corp",
         color: "#6C63FF",
         status: "ACTIVE",
         estimatedHours: 200,
@@ -138,6 +137,7 @@ async function main() {
       data: {
         name: "Mobile App v2",
         description: "Version 2 of the mobile application with offline support",
+        clientName: "TechStart Inc",
         color: "#22C55E",
         status: "ACTIVE",
         estimatedHours: 350,
@@ -149,6 +149,7 @@ async function main() {
       data: {
         name: "Internal Analytics Dashboard",
         description: "Real-time analytics dashboard for business intelligence",
+        clientName: "Internal",
         color: "#F59E0B",
         status: "ACTIVE",
         estimatedHours: 120,
@@ -172,19 +173,19 @@ async function main() {
   // SubTasks — pre-assigned so employees see work out of the box
   const subtasks = await Promise.all([
     // Website Redesign subtasks (Design + Engineering teams)
-    prisma.subTask.create({ data: { name: "Design new homepage mockups", projectId: projects[0].id, status: "DONE", estimatedHours: 30, assignedToId: employees[0].id } }),           // Sarah Chen (Design)
-    prisma.subTask.create({ data: { name: "Implement responsive header", projectId: projects[0].id, status: "IN_PROGRESS", estimatedHours: 20, assignedToId: teamLeaders[0].id } }), // Maya Johnson (Design TL)
-    prisma.subTask.create({ data: { name: "Build product gallery component", projectId: projects[0].id, status: "TODO", estimatedHours: 25, assignedToId: null } }),                  // unassigned
-    prisma.subTask.create({ data: { name: "Optimize images and assets", projectId: projects[0].id, status: "TODO", estimatedHours: 15, assignedToId: employees[0].id } }),           // Sarah Chen (Design)
+    prisma.subTask.create({ data: { name: "Design new homepage mockups", projectId: projects[0].id, status: "DONE", estimatedHours: 30, assignments: { create: { userId: employees[0].id } } } }),           // Sarah Chen (Design)
+    prisma.subTask.create({ data: { name: "Implement responsive header", projectId: projects[0].id, status: "IN_PROGRESS", estimatedHours: 20, assignments: { create: { userId: teamLeaders[0].id } } } }), // Maya Johnson (Design TL)
+    prisma.subTask.create({ data: { name: "Build product gallery component", projectId: projects[0].id, status: "TODO", estimatedHours: 25 } }),                                                             // unassigned
+    prisma.subTask.create({ data: { name: "Optimize images and assets", projectId: projects[0].id, status: "TODO", estimatedHours: 15, assignments: { create: { userId: employees[0].id } } } }),           // Sarah Chen (Design)
     // Mobile App v2 subtasks (Engineering team)
-    prisma.subTask.create({ data: { name: "Offline data sync module", projectId: projects[1].id, status: "IN_PROGRESS", estimatedHours: 60, assignedToId: employees[1].id } }),       // James Wilson (Eng)
-    prisma.subTask.create({ data: { name: "Push notifications setup", projectId: projects[1].id, status: "TODO", estimatedHours: 30, assignedToId: employees[2].id } }),              // Priya Patel (Eng)
-    prisma.subTask.create({ data: { name: "User profile redesign", projectId: projects[1].id, status: "DONE", estimatedHours: 25, assignedToId: employees[1].id } }),                // James Wilson (Eng)
-    prisma.subTask.create({ data: { name: "Performance optimization", projectId: projects[1].id, status: "TODO", estimatedHours: 40, assignedToId: teamLeaders[1].id } }),            // Alex Rivera (Eng TL)
+    prisma.subTask.create({ data: { name: "Offline data sync module", projectId: projects[1].id, status: "IN_PROGRESS", estimatedHours: 60, assignments: { create: { userId: employees[1].id } } } }),       // James Wilson (Eng)
+    prisma.subTask.create({ data: { name: "Push notifications setup", projectId: projects[1].id, status: "TODO", estimatedHours: 30, assignments: { create: { userId: employees[2].id } } } }),              // Priya Patel (Eng)
+    prisma.subTask.create({ data: { name: "User profile redesign", projectId: projects[1].id, status: "DONE", estimatedHours: 25, assignments: { create: { userId: employees[1].id } } } }),                // James Wilson (Eng)
+    prisma.subTask.create({ data: { name: "Performance optimization", projectId: projects[1].id, status: "TODO", estimatedHours: 40, assignments: { create: { userId: teamLeaders[1].id } } } }),            // Alex Rivera (Eng TL)
     // Internal Analytics Dashboard subtasks (Design + Engineering teams)
-    prisma.subTask.create({ data: { name: "Data pipeline setup", projectId: projects[2].id, status: "DONE", estimatedHours: 25, assignedToId: teamLeaders[1].id } }),                // Alex Rivera (Eng TL)
-    prisma.subTask.create({ data: { name: "Chart components library", projectId: projects[2].id, status: "IN_PROGRESS", estimatedHours: 30, assignedToId: null } }),                  // unassigned
-    prisma.subTask.create({ data: { name: "User permission system", projectId: projects[2].id, status: "TODO", estimatedHours: 15, assignedToId: null } }),                          // unassigned
+    prisma.subTask.create({ data: { name: "Data pipeline setup", projectId: projects[2].id, status: "DONE", estimatedHours: 25, assignments: { create: { userId: teamLeaders[1].id } } } }),                // Alex Rivera (Eng TL)
+    prisma.subTask.create({ data: { name: "Chart components library", projectId: projects[2].id, status: "IN_PROGRESS", estimatedHours: 30 } }),                                                            // unassigned
+    prisma.subTask.create({ data: { name: "User permission system", projectId: projects[2].id, status: "TODO", estimatedHours: 15 } }),                                                                    // unassigned
   ]);
   console.log("SubTasks created");
 

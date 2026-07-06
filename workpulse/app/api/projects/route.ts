@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
       data: {
         name: parsed.name,
         description: parsed.description,
+        clientName: parsed.clientName,
         color: parsed.color,
         estimatedHours: parsed.estimatedHours,
         startDate: parsed.startDate ? new Date(parsed.startDate) : new Date(),

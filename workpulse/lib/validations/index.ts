@@ -8,6 +8,7 @@ export const loginSchema = z.object({
 export const projectSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
+  clientName: z.string().optional(),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid hex color").default("#6C63FF"),
   status: z.enum(["ACTIVE", "ON_HOLD", "COMPLETED", "ARCHIVED"]).optional(),
   estimatedHours: z.number().min(0, "Must be positive").default(0),
@@ -21,7 +22,7 @@ export const subTaskSchema = z.object({
   description: z.string().optional(),
   status: z.enum(["TODO", "IN_PROGRESS", "DONE"]).optional(),
   estimatedHours: z.number().min(0).optional().nullable(),
-  assignedToId: z.string().optional().nullable(),
+  assignedToIds: z.array(z.string()).optional(),
 });
 
 export const employeeSchema = z.object({
@@ -38,7 +39,7 @@ export const teamSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
   memberIds: z.array(z.string()).optional(),
-  teamLeadId: z.string().optional().nullable(),
+  teamLeadIds: z.array(z.string()).optional(),
 });
 
 export const checkInSchema = z.object({

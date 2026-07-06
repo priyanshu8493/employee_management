@@ -12,13 +12,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const existing = await prisma.subTask.findUnique({
       where: { id },
-      include: { project: { include: { projectTeams: { select: { teamId: true } } } } },
+      include: {
+        assignments: { select: { userId: true } },
+        project: { include: { projectTeams: { select: { teamId: true } } } },
+      },
     });
     if (!existing) return apiError("SubTask not found", "NOT_FOUND", 404);
 
+    const assignedUserIds = existing.assignments.map((a) => a.userId);
+
     // Employees can only mark their own assigned subtasks as DONE
     if (session.user.role === "EMPLOYEE") {
-      if (existing.assignedToId !== session.user.id) {
+      if (!assignedUserIds.includes(session.user.id)) {
         return apiError("This task is not assigned to you", "FORBIDDEN", 403);
       }
       if (Object.keys(parsed).length !== 1 || parsed.status !== "DONE") {
@@ -28,13 +33,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         where: { id },
         data: { status: "DONE" },
         include: {
-          assignedTo: { select: { id: true, name: true, avatarUrl: true } },
+          assignments: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
         },
       });
       return apiSuccess(subtask);
     }
 
-    // TEAM_LEADER can update assignedToId and status (scoped to their team's projects)
+    // TEAM_LEADER can update assignments and status (scoped to their team's projects)
     if (session.user.role === "TEAM_LEADER") {
       const user = await prisma.user.findUnique({
         where: { id: session.user.id },
@@ -44,17 +49,24 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (!user?.teamId || !teamIds.includes(user.teamId)) {
         return apiError("Your team is not assigned to this project", "FORBIDDEN", 403);
       }
-      const allowedFields: Record<string, unknown> = {};
-      if (parsed.assignedToId !== undefined) allowedFields.assignedToId = parsed.assignedToId;
-      if (parsed.status !== undefined) allowedFields.status = parsed.status;
-      if (Object.keys(allowedFields).length === 0) {
+
+      const updateData: Record<string, unknown> = {};
+      if (parsed.assignedToIds !== undefined) {
+        updateData.assignments = {
+          deleteMany: {},
+          create: parsed.assignedToIds.map((userId: string) => ({ userId })),
+        };
+      }
+      if (parsed.status !== undefined) updateData.status = parsed.status;
+      if (Object.keys(updateData).length === 0) {
         return apiError("Not allowed to update these fields", "FORBIDDEN", 403);
       }
+
       const subtask = await prisma.subTask.update({
         where: { id },
-        data: allowedFields,
+        data: updateData,
         include: {
-          assignedTo: { select: { id: true, name: true, avatarUrl: true } },
+          assignments: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
         },
       });
       return apiSuccess(subtask);
@@ -65,11 +77,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return apiError("Forbidden", "FORBIDDEN", 403);
     }
 
+    const ownerData: Record<string, unknown> = {};
+    if (parsed.name !== undefined) ownerData.name = parsed.name;
+    if (parsed.description !== undefined) ownerData.description = parsed.description;
+    if (parsed.status !== undefined) ownerData.status = parsed.status;
+    if (parsed.estimatedHours !== undefined) ownerData.estimatedHours = parsed.estimatedHours;
+    if (parsed.assignedToIds !== undefined) {
+      ownerData.assignments = {
+        deleteMany: {},
+        create: parsed.assignedToIds.map((userId: string) => ({ userId })),
+      };
+    }
+
     const subtask = await prisma.subTask.update({
       where: { id },
-      data: parsed,
+      data: ownerData,
       include: {
-        assignedTo: { select: { id: true, name: true, avatarUrl: true } },
+        assignments: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
       },
     });
 

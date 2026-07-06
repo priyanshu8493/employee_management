@@ -4,22 +4,24 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Users, Loader2, ChevronDown, ChevronRight } from "lucide-react";
+import { Users, Loader2, ChevronDown, ChevronRight, Edit3 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function TeamTasksPage() {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
+  const [assignSubtask, setAssignSubtask] = useState<any>(null);
+  const [assignSelectedIds, setAssignSelectedIds] = useState<string[]>([]);
 
   const isTeamLeader = session?.user?.role === "TEAM_LEADER";
 
@@ -58,11 +60,11 @@ export default function TeamTasksPage() {
   });
 
   const assignMutation = useMutation({
-    mutationFn: async ({ subtaskId, assignedToId }: { subtaskId: string; assignedToId: string | null }) => {
+    mutationFn: async ({ subtaskId, assignedToIds }: { subtaskId: string; assignedToIds: string[] }) => {
       const res = await fetch(`/api/subtasks/${subtaskId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assignedToId }),
+        body: JSON.stringify({ assignedToIds }),
       });
       const { data, error } = await res.json();
       if (error) throw new Error(error.message);
@@ -70,7 +72,7 @@ export default function TeamTasksPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["team-tasks-subtasks"] });
-      toast.success("SubTask assigned");
+      toast.success("Assignments updated");
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -176,27 +178,25 @@ export default function TeamTasksPage() {
                               )}
                             </div>
                             <div className="flex items-center gap-2 shrink-0 ml-3">
-                              <Select
-                                value={subtask.assignedTo?.id || ""}
-                                onValueChange={(v) => {
-                                  assignMutation.mutate({
-                                    subtaskId: subtask.id,
-                                    assignedToId: v || null,
-                                  });
+                              <div className="flex flex-wrap gap-1">
+                                {(subtask.assignments || []).map((a: any) => (
+                                  <span key={a.userId} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                                    {a.user?.name?.split(" ")[0]}
+                                  </span>
+                                ))}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-xs text-muted-foreground"
+                                onClick={() => {
+                                  setAssignSubtask(subtask);
+                                  setAssignSelectedIds((subtask.assignments || []).map((a: any) => a.userId));
                                 }}
                               >
-                                <SelectTrigger className="w-40 h-7 bg-surface border-border text-xs">
-                                  <SelectValue placeholder="Assign..." />
-                                </SelectTrigger>
-                                <SelectContent className="bg-surface-raised border-border">
-                                  <SelectItem value="">Unassign</SelectItem>
-                                  {(teamMembers || []).map((m: any) => (
-                                    <SelectItem key={m.id} value={m.id}>
-                                      {m.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                                <Edit3 className="h-3 w-3 mr-1" />
+                                Assign
+                              </Button>
                             </div>
                           </div>
                         ))}
@@ -209,6 +209,56 @@ export default function TeamTasksPage() {
           })}
         </div>
       )}
+
+      <Dialog open={!!assignSubtask} onOpenChange={() => setAssignSubtask(null)}>
+        <DialogContent className="bg-surface-raised border-border max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Assign Members</DialogTitle>
+          </DialogHeader>
+          {assignSubtask && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">{assignSubtask.name}</p>
+              {(!teamMembers || teamMembers.length === 0) ? (
+                <p className="text-muted-foreground text-sm text-center py-4">No team members available</p>
+              ) : (
+                teamMembers.map((m: any) => (
+                  <label
+                    key={m.id}
+                    className="flex items-center gap-2.5 p-2.5 rounded-lg hover:bg-surface cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={assignSelectedIds.includes(m.id)}
+                      onCheckedChange={(checked) => {
+                        setAssignSelectedIds((prev) =>
+                          checked ? [...prev, m.id] : prev.filter((id) => id !== m.id)
+                        );
+                      }}
+                    />
+                    <span className="text-sm font-medium text-foreground">{m.name}</span>
+                  </label>
+                ))
+              )}
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="outline" onClick={() => setAssignSubtask(null)} className="border-border text-foreground">
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  onClick={() => {
+                    assignMutation.mutate({
+                      subtaskId: assignSubtask.id,
+                      assignedToIds: assignSelectedIds,
+                    });
+                    setAssignSubtask(null);
+                  }}
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

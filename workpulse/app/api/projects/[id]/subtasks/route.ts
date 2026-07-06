@@ -17,14 +17,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Employees only see subtasks assigned to them
     // ?all=true bypasses this (used by team-tasks assignment page)
     if (session.user.role === "EMPLOYEE" && !showAll) {
-      where.assignedToId = session.user.id;
+      where.assignments = { some: { userId: session.user.id } };
     }
 
     const subtasks = await prisma.subTask.findMany({
       where,
       include: {
         _count: { select: { timeEntries: true } },
-        assignedTo: { select: { id: true, name: true, avatarUrl: true } },
+        assignments: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
       },
       orderBy: { createdAt: "asc" },
     });
@@ -67,11 +67,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         name: parsed.name,
         description: parsed.description,
         estimatedHours: parsed.estimatedHours,
-        assignedToId: parsed.assignedToId || null,
         projectId: id,
+        assignments: parsed.assignedToIds?.length
+          ? { create: parsed.assignedToIds.map((userId) => ({ userId })) }
+          : undefined,
       },
       include: {
-        assignedTo: { select: { id: true, name: true, avatarUrl: true } },
+        assignments: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
       },
     });
 

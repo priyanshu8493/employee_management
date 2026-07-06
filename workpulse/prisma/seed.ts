@@ -22,10 +22,10 @@ async function main() {
   
   // 3. Create the Owner account WITH the hashed password
   // const owner = await prisma.user.upsert({
-  //   where: { email: 'owner@workpulse.com' },
+  //   where: { email: 'rabi@smcadservices.com' },
   //   update: {},
   //   create: {
-  //     email: 'owner@workpulse.com',
+  //     email: 'rabi@smcadservices.com',
   //     name: 'Owner',
   //     passwordHash: hashedPassword, // MUST use the hashed password here
   //     role: 'OWNER',
@@ -33,12 +33,12 @@ async function main() {
   // });
 
   const owner = await prisma.user.upsert({
-    where: { email: 'owner@workpulse.com' },
+    where: { email: 'rabi@smcadservices.com' },
     update: {
       passwordHash: hashedPassword, // This forces the database to update the password hash!
     },
     create: {
-      email: 'owner@workpulse.com',
+      email: 'rabi@smcadservices.com',
       name: 'Owner',
       passwordHash: hashedPassword,
       role: 'OWNER',
@@ -279,7 +279,7 @@ async function main() {
 
   console.log("\nSeed completed successfully!");
   console.log("\nLogin credentials:");
-  console.log("  Owner:        owner@workpulse.com / Admin@1234");
+  console.log("  Owner:        rabi@smcadservices.com / Admin@1234");
   console.log("  Employee:     sarah@workpulse.com / Admin@1234");
   console.log("  Employee:     alex@workpulse.com / Admin@1234");
   console.log("  Employee:     priya@workpulse.com / Admin@1234");

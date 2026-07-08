@@ -99,7 +99,7 @@ export function OwnerSidebar() {
               <p className="text-sm font-medium text-sidebar-foreground truncate">
                 {session?.user?.name}
               </p>
-              <p className="text-xs text-muted-foreground truncate">Owner</p>
+              <p className="text-xs text-muted-foreground truncate">Rabi Mondal</p>
             </div>
           </div>
           <Button

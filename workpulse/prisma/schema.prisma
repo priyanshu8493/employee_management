@@ -33,6 +33,7 @@ model User {
   role         Role         @default(EMPLOYEE)
   avatarUrl    String?
   phone        String?
+  designation  String?
   isActive     Boolean      @default(true)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt

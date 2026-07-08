@@ -17,6 +17,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         name: true,
         avatarUrl: true,
         phone: true,
+        designation: true,
         isActive: true,
         teamId: true,
         team: { select: { id: true, name: true } },
@@ -92,6 +93,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (parsed.isActive !== undefined) data.isActive = parsed.isActive;
     if (parsed.avatarUrl !== undefined) data.avatarUrl = parsed.avatarUrl;
     if (parsed.phone !== undefined) data.phone = parsed.phone;
+    if (parsed.designation !== undefined) data.designation = parsed.designation;
     if (parsed.password) {
       data.passwordHash = await bcrypt.hash(parsed.password, 12);
     }
@@ -101,7 +103,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       data,
       select: {
         id: true, email: true, name: true, role: true, teamId: true,
-        isActive: true, avatarUrl: true, phone: true,
+        isActive: true, avatarUrl: true, phone: true, designation: true,
       },
     });
 

@@ -138,6 +138,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
               <h1 className="text-2xl font-bold text-foreground">{employee.name}</h1>
               <p className="text-muted-foreground">{employee.email}</p>
               <div className="flex items-center gap-2 mt-1">
+                {employee.designation && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">{employee.designation}</span>}
                 <span className="text-xs bg-surface-raised px-2 py-0.5 rounded">{employee.team?.name || "No team"}</span>
                 <div className="flex items-center gap-1 text-xs">
                   <div className={`w-2 h-2 rounded-full ${employee.isActive ? "bg-success" : "bg-muted-foreground"}`} />
@@ -192,6 +193,10 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
               <Input defaultValue={employee.name} id="edit-name" className="bg-surface border-border text-foreground" />
             </div>
             <div className="space-y-2">
+              <Label className="text-foreground">Designation</Label>
+              <Input defaultValue={employee.designation || ""} id="edit-designation" className="bg-surface border-border text-foreground" />
+            </div>
+            <div className="space-y-2">
               <Label className="text-foreground">Phone</Label>
               <Input defaultValue={employee.phone || ""} id="edit-phone" className="bg-surface border-border text-foreground" />
             </div>
@@ -202,8 +207,9 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={() => {
                 const name = (document.getElementById("edit-name") as HTMLInputElement)?.value;
+                const designation = (document.getElementById("edit-designation") as HTMLInputElement)?.value;
                 const phone = (document.getElementById("edit-phone") as HTMLInputElement)?.value;
-                if (name) updateMutation.mutate({ name, phone });
+                if (name) updateMutation.mutate({ name, designation, phone });
               }}
             >
               Save

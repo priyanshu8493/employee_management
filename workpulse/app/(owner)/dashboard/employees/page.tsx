@@ -33,7 +33,7 @@ export default function EmployeesPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [teamFilter, setTeamFilter] = useState("ALL");
   const [activeFilter, setActiveFilter] = useState("ALL");
-  const [form, setForm] = useState({ name: "", email: "", teamId: "" });
+  const [form, setForm] = useState({ name: "", email: "", teamId: "", designation: "" });
   const [createdPassword, setCreatedPassword] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -75,7 +75,7 @@ export default function EmployeesPage() {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       setCreatedPassword(data.tempPassword);
       toast.success("Employee created");
-      setForm({ name: "", email: "", teamId: "" });
+      setForm({ name: "", email: "", teamId: "", designation: "" });
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -98,6 +98,12 @@ export default function EmployeesPage() {
           </div>
         </div>
       ),
+    },
+    {
+      key: "designation",
+      header: "Designation",
+      sortable: true,
+      render: (emp: any) => <span className="text-muted-foreground">{emp.designation || "--"}</span>,
     },
     {
       key: "team",
@@ -198,6 +204,15 @@ export default function EmployeesPage() {
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
                 className="bg-surface border-border text-foreground"
                 placeholder="Full name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-foreground">Designation</Label>
+              <Input
+                value={form.designation}
+                onChange={(e) => setForm((p) => ({ ...p, designation: e.target.value }))}
+                className="bg-surface border-border text-foreground"
+                placeholder="e.g. Software Engineer"
               />
             </div>
             <div className="space-y-2">

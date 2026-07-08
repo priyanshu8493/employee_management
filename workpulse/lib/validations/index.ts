@@ -33,6 +33,7 @@ export const employeeSchema = z.object({
   isActive: z.boolean().optional(),
   avatarUrl: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
+  designation: z.string().optional().nullable(),
 });
 
 export const teamSchema = z.object({
@@ -62,6 +63,7 @@ export const profileSchema = z.object({
   name: z.string().min(1, "Name is required"),
   phone: z.string().optional().nullable(),
   avatarUrl: z.string().optional().nullable(),
+  designation: z.string().optional().nullable(),
 });
 
 export const qcReportSchema = z.object({

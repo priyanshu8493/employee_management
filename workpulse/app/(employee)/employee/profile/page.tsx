@@ -17,6 +17,7 @@ const profileSchema = z.object({
   name: z.string().min(1, "Name is required"),
   phone: z.string().optional(),
   avatarUrl: z.string().optional(),
+  designation: z.string().optional(),
 });
 
 const passwordSchema = z.object({
@@ -34,6 +35,7 @@ export default function EmployeeProfilePage() {
       name: session?.user?.name || "",
       phone: "",
       avatarUrl: "",
+      designation: "",
     },
   });
 
@@ -46,7 +48,7 @@ export default function EmployeeProfilePage() {
   });
 
   const profileMutation = useMutation({
-    mutationFn: async (data: { name: string; phone?: string; avatarUrl?: string }) => {
+    mutationFn: async (data: { name: string; phone?: string; avatarUrl?: string; designation?: string }) => {
       const res = await fetch(`/api/employees/${session?.user?.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -122,6 +124,14 @@ export default function EmployeeProfilePage() {
             {profileForm.formState.errors.name && (
               <p className="text-xs text-danger">{profileForm.formState.errors.name.message}</p>
             )}
+          </div>
+          <div className="space-y-2">
+            <Label className="text-foreground">Designation</Label>
+            <Input
+              {...profileForm.register("designation")}
+              placeholder="e.g. Software Engineer"
+              className="bg-surface border-border text-foreground placeholder:text-muted-foreground"
+            />
           </div>
           <div className="space-y-2">
             <Label className="text-foreground">Phone</Label>

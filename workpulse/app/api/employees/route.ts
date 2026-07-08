@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
         role: true,
         avatarUrl: true,
         phone: true,
+        designation: true,
         isActive: true,
         teamId: true,
         team: { select: { id: true, name: true } },
@@ -107,6 +108,7 @@ export async function POST(request: NextRequest) {
         isActive: parsed.isActive ?? true,
         avatarUrl: parsed.avatarUrl,
         phone: parsed.phone,
+        designation: parsed.designation,
       },
       select: {
         id: true,
@@ -117,6 +119,7 @@ export async function POST(request: NextRequest) {
         isActive: true,
         avatarUrl: true,
         phone: true,
+        designation: true,
       },
     });
 

@@ -61,7 +61,9 @@ export async function GET(request: NextRequest) {
     const employeesWithStats = await Promise.all(
       employees.map(async (emp) => {
         const weekStart = new Date();
-        weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+        const dayOfWeek = weekStart.getDay();
+        const diffToMonday = (dayOfWeek + 6) % 7;
+        weekStart.setDate(weekStart.getDate() - diffToMonday);
         weekStart.setHours(0, 0, 0, 0);
 
         const weekEntries = await prisma.timeEntry.aggregate({

@@ -39,7 +39,7 @@ const PRESETS: Record<string, { label: string; getRange: () => { start: string; 
     getRange: () => {
       const now = new Date();
       const start = new Date(now);
-      start.setDate(start.getDate() - start.getDay() + 1);
+      start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
       start.setHours(0, 0, 0, 0);
       return { start: start.toISOString(), end: now.toISOString() };
     },

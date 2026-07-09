@@ -9,7 +9,7 @@ export async function GET() {
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startOfWeek = new Date(startOfDay);
-    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1);
+    startOfWeek.setDate(startOfWeek.getDate() - ((startOfWeek.getDay() + 6) % 7));
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const activeEmployees = await prisma.timeEntry.count({

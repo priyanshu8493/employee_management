@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState, use, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -132,12 +132,23 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
   const stats = employee.stats || {};
   const projectBreakdown = stats.projectBreakdown || [];
 
-  const monthlyChartData = Array.from({ length: 12 }, (_, i) => {
-    const month = new Date();
-    month.setMonth(month.getMonth() - 11 + i);
-    const monthName = month.toLocaleDateString("en-US", { month: "short" });
-    return { month: monthName, hours: 0 };
-  });
+  const monthlyChartData = useMemo(() => {
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - 11 + i);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      return { key, label: d.toLocaleDateString("en-US", { month: "short" }), hours: 0 };
+    });
+    if (timeEntries) {
+      for (const entry of timeEntries) {
+        const d = new Date(entry.checkInAt);
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        const m = months.find((m) => m.key === key);
+        if (m) m.hours += (entry.durationMinutes || 0) / 60;
+      }
+    }
+    return months.map((m) => ({ month: m.label, hours: Math.round(m.hours * 10) / 10 }));
+  }, [timeEntries]);
 
   const timeColumns = [
     { key: "checkInAt", header: "Date", sortable: true, render: (e: any) => formatDate(e.checkInAt) },

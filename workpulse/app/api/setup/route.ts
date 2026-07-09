@@ -1,9 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { getAuthSession } from "@/lib/api-utils";
 
-export async function GET() {
+export async function POST(request: NextRequest) {
   try {
+    const session = await getAuthSession();
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+    if (session.user.role !== "OWNER") {
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+    }
+
     const hashedPassword = await bcrypt.hash("Admin@1234", 12);
 
     const user = await prisma.user.upsert({

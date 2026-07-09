@@ -25,6 +25,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             assignments: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
           },
         },
+        timeEntries: {
+          where: { durationMinutes: { not: null } },
+          select: { durationMinutes: true },
+        },
         _count: { select: { timeEntries: true } },
       },
     });

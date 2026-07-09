@@ -29,6 +29,7 @@ export const employeeSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email"),
   password: z.string().min(6, "Password must be at least 6 characters").optional(),
+  currentPassword: z.string().optional(),
   teamId: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
   avatarUrl: z.string().optional().nullable(),

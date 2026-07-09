@@ -70,7 +70,7 @@ export default function EmployeeProfilePage() {
       const res = await fetch(`/api/employees/${session?.user?.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: data.newPassword }),
+        body: JSON.stringify({ password: data.newPassword, currentPassword: data.currentPassword }),
       });
       const { data: result, error } = await res.json();
       if (error) throw new Error(error.message);

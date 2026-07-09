@@ -39,6 +39,10 @@ export async function GET(request: NextRequest) {
         projectTeams: {
           include: { team: { select: { id: true, name: true } } },
         },
+        timeEntries: {
+          where: { durationMinutes: { not: null } },
+          select: { durationMinutes: true },
+        },
       },
       orderBy: { updatedAt: "desc" },
     });

@@ -1,16 +1,20 @@
 import { NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { apiSuccess, apiError, handleApiError, requireRole } from "@/lib/api-utils";
+import { apiSuccess, apiError, handleApiError, requireAuth, requireRole, getAuthSession } from "@/lib/api-utils";
 import { employeeSchema, changePasswordSchema } from "@/lib/validations";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireRole("OWNER");
+    const session = await requireAuth();
     const { id } = await params;
 
+    if (session.user.role !== "OWNER" && session.user.id !== id) {
+      return apiError("Forbidden", "FORBIDDEN", 403);
+    }
+
     const employee = await prisma.user.findUnique({
-      where: { id, role: "EMPLOYEE" },
+      where: { id },
       select: {
         id: true,
         email: true,
@@ -19,6 +23,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         phone: true,
         designation: true,
         isActive: true,
+        role: true,
         teamId: true,
         team: { select: { id: true, name: true } },
         createdAt: true,
@@ -30,7 +35,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startOfWeek = new Date(startOfDay);
-    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1);
+    startOfWeek.setDate(startOfWeek.getDate() - ((startOfWeek.getDay() + 6) % 7));
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const [todayAgg, weekAgg, monthAgg, projectBreakdown] = await Promise.all([
@@ -79,24 +84,48 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireRole("OWNER");
+    const session = await requireAuth();
     const { id } = await params;
     const body = await request.json();
+    const isOwner = session.user.role === "OWNER";
+    const isSelf = session.user.id === id;
+
+    if (!isOwner && !isSelf) {
+      return apiError("Forbidden", "FORBIDDEN", 403);
+    }
+
     const parsed = employeeSchema.partial().parse(body);
 
     const existing = await prisma.user.findUnique({ where: { id } });
     if (!existing) return apiError("Employee not found", "NOT_FOUND", 404);
 
     if (parsed.email && parsed.email !== existing.email) {
+      if (!isOwner) return apiError("Only owners can change email", "FORBIDDEN", 403);
       const emailExists = await prisma.user.findUnique({ where: { email: parsed.email } });
       if (emailExists) return apiError("Email already in use", "DUPLICATE_EMAIL", 409);
     }
 
+    if (parsed.teamId !== undefined && !isOwner) {
+      return apiError("Only owners can change team", "FORBIDDEN", 403);
+    }
+    if (parsed.isActive !== undefined && !isOwner) {
+      return apiError("Only owners can change status", "FORBIDDEN", 403);
+    }
+
+    if (parsed.password) {
+      if (parsed.currentPassword) {
+        const isValid = await bcrypt.compare(parsed.currentPassword, existing.passwordHash);
+        if (!isValid) return apiError("Current password is incorrect", "INVALID_PASSWORD", 400);
+      } else if (!isOwner) {
+        return apiError("Current password is required", "VALIDATION_ERROR", 400);
+      }
+    }
+
     const data: Record<string, unknown> = {};
     if (parsed.name !== undefined) data.name = parsed.name;
-    if (parsed.email !== undefined) data.email = parsed.email;
-    if (parsed.teamId !== undefined) data.teamId = parsed.teamId;
-    if (parsed.isActive !== undefined) data.isActive = parsed.isActive;
+    if (parsed.email !== undefined && isOwner) data.email = parsed.email;
+    if (parsed.teamId !== undefined && isOwner) data.teamId = parsed.teamId;
+    if (parsed.isActive !== undefined && isOwner) data.isActive = parsed.isActive;
     if (parsed.avatarUrl !== undefined) data.avatarUrl = parsed.avatarUrl;
     if (parsed.phone !== undefined) data.phone = parsed.phone;
     if (parsed.designation !== undefined) data.designation = parsed.designation;
@@ -129,11 +158,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     const existing = await prisma.user.findUnique({
       where: { id },
-      include: { _count: { select: { timeEntries: true, leaves: true } } },
+      include: { _count: { select: { timeEntries: true, leaves: true, qcMistakes: true, qcReports: true } } },
     });
     if (!existing) return apiError("Employee not found", "NOT_FOUND", 404);
 
-    const hasReferences = existing._count.timeEntries > 0 || existing._count.leaves > 0;
+    const hasReferences = existing._count.timeEntries > 0 || existing._count.leaves > 0 || existing._count.qcMistakes > 0 || existing._count.qcReports > 0;
 
     if (hasReferences) {
       await prisma.user.update({

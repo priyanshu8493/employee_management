@@ -3,14 +3,15 @@ import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const prismaClientSingleton = () => {
-  // Strip query params so they do not clash with the manual SSL object
-  const connectionString = process.env.DATABASE_URL?.split('?')[0];
+  const connectionString = process.env.DATABASE_URL!.split('?')[0];
 
   const pool = new Pool({
     connectionString,
     ssl: {
       rejectUnauthorized: false,
     },
+    max: 3,
+    idleTimeoutMillis: 10000,
   });
 
   const adapter = new PrismaPg(pool);

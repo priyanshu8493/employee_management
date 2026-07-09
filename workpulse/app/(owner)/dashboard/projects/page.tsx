@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, LayoutGrid, List, Archive } from "lucide-react";
+import { Plus, LayoutGrid, List, Archive, Edit3, Trash2 } from "lucide-react";
 
 const PRESET_COLORS = ["#6C63FF", "#22C55E", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4", "#EC4899", "#14B8A6"];
 
@@ -37,8 +37,21 @@ export default function ProjectsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [archiveId, setArchiveId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editProject, setEditProject] = useState<any>(null);
 
   const [form, setForm] = useState({
+    name: "",
+    description: "",
+    clientName: "",
+    color: "#6C63FF",
+    estimatedHours: 0,
+    startDate: "",
+    endDate: "",
+    teamIds: [] as string[],
+  });
+
+  const [editForm, setEditForm] = useState({
     name: "",
     description: "",
     clientName: "",
@@ -106,6 +119,54 @@ export default function ProjectsPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
+      const res = await fetch(`/api/projects/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const { data: result, error } = await res.json();
+      if (error) throw new Error(error.message);
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("Project updated");
+      setEditProject(null);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+      const { data, error } = await res.json();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("Project deleted");
+      setDeleteId(null);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const openEdit = (project: any) => {
+    setEditForm({
+      name: project.name,
+      description: project.description || "",
+      clientName: project.clientName || "",
+      color: project.color,
+      estimatedHours: project.estimatedHours,
+      startDate: project.startDate?.split("T")[0] || "",
+      endDate: project.endDate?.split("T")[0] || "",
+      teamIds: (project.projectTeams || []).map((pt: any) => pt.team.id),
+    });
+    setEditProject(project);
+  };
+
   const columns = [
     {
       key: "name",
@@ -170,16 +231,34 @@ export default function ProjectsPage() {
       key: "actions",
       header: "",
       render: (p: any) => (
-        p.status !== "ARCHIVED" && (
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            onClick={(e) => { e.stopPropagation(); openEdit(p); }}
+          >
+            <Edit3 className="h-3.5 w-3.5" />
+          </Button>
+          {p.status !== "ARCHIVED" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-danger"
+              onClick={(e) => { e.stopPropagation(); setArchiveId(p.id); }}
+            >
+              <Archive className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
             className="text-muted-foreground hover:text-danger"
-            onClick={(e) => { e.stopPropagation(); setArchiveId(p.id); }}
+            onClick={(e) => { e.stopPropagation(); setDeleteId(p.id); }}
           >
-            <Archive className="h-4 w-4" />
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
-        )
+        </div>
       ),
     },
   ];
@@ -275,6 +354,34 @@ export default function ProjectsPage() {
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>{project._count?.subTasks || 0} tasks</span>
                     <span>{project.projectTeams?.length || 0} teams</span>
+                  </div>
+                  <div className="flex justify-end gap-1 mt-3 pt-2 border-t border-border">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground h-7 w-7 p-0"
+                      onClick={(e) => { e.stopPropagation(); openEdit(project); }}
+                    >
+                      <Edit3 className="h-3.5 w-3.5" />
+                    </Button>
+                    {project.status !== "ARCHIVED" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground h-7 w-7 p-0 hover:text-danger"
+                        onClick={(e) => { e.stopPropagation(); setArchiveId(project.id); }}
+                      >
+                        <Archive className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground h-7 w-7 p-0 hover:text-danger"
+                      onClick={(e) => { e.stopPropagation(); setDeleteId(project.id); }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </Card>
               );
@@ -393,6 +500,122 @@ export default function ProjectsPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!editProject} onOpenChange={() => setEditProject(null)}>
+        <DialogContent className="bg-surface-raised border-border max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Edit Project</DialogTitle>
+          </DialogHeader>
+          {editProject && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-foreground">Name *</Label>
+                <Input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
+                  className="bg-surface border-border text-foreground"
+                  placeholder="Project name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">Description</Label>
+                <Textarea
+                  value={editForm.description}
+                  onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
+                  className="bg-surface border-border text-foreground placeholder:text-muted-foreground"
+                  placeholder="Brief description..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">Client Name</Label>
+                <Input
+                  value={editForm.clientName}
+                  onChange={(e) => setEditForm((p) => ({ ...p, clientName: e.target.value }))}
+                  className="bg-surface border-border text-foreground"
+                  placeholder="Client or organization"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">Color</Label>
+                <div className="flex gap-2">
+                  {PRESET_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      className={`w-8 h-8 rounded-full border-2 transition-all ${
+                        editForm.color === c ? "border-foreground scale-110" : "border-transparent"
+                      }`}
+                      style={{ backgroundColor: c }}
+                      onClick={() => setEditForm((p) => ({ ...p, color: c }))}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-foreground">Estimated Hours</Label>
+                  <Input
+                    type="number"
+                    value={editForm.estimatedHours}
+                    onChange={(e) => setEditForm((p) => ({ ...p, estimatedHours: Number(e.target.value) }))}
+                    className="bg-surface border-border text-foreground"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-foreground">Start Date</Label>
+                  <Input
+                    type="date"
+                    value={editForm.startDate}
+                    onChange={(e) => setEditForm((p) => ({ ...p, startDate: e.target.value }))}
+                    className="bg-surface border-border text-foreground"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">Teams</Label>
+                <Select
+                  value={editForm.teamIds[0] || ""}
+                  onValueChange={(v) => setEditForm((p) => ({ ...p, teamIds: v ? [v] : [] }))}
+                >
+                  <SelectTrigger className="bg-surface border-border text-foreground">
+                    <SelectValue placeholder="Select team" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-surface-raised border-border">
+                    {(teams || []).map((t: any) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="outline" onClick={() => setEditProject(null)} className="border-border text-foreground">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (!editForm.name) return;
+                    updateMutation.mutate({
+                      id: editProject.id,
+                      data: {
+                        name: editForm.name,
+                        description: editForm.description || undefined,
+                        clientName: editForm.clientName || undefined,
+                        color: editForm.color,
+                        estimatedHours: editForm.estimatedHours,
+                        startDate: editForm.startDate || undefined,
+                        teamIds: editForm.teamIds,
+                      },
+                    });
+                  }}
+                  disabled={!editForm.name || updateMutation.isPending}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  {updateMutation.isPending ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <ConfirmDialog
         open={!!archiveId}
         onOpenChange={() => setArchiveId(null)}
@@ -401,6 +624,16 @@ export default function ProjectsPage() {
         confirmLabel="Archive"
         variant="destructive"
         onConfirm={() => archiveId && archiveMutation.mutate(archiveId)}
+      />
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={() => setDeleteId(null)}
+        title="Delete Project"
+        description="Are you sure? This will permanently delete the project. If it has time entries, it will be archived instead."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() => deleteId && deleteMutation.mutate(deleteId)}
       />
     </div>
   );

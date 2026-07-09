@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DataTable } from "@/components/shared/DataTable";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -24,7 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Copy, Check } from "lucide-react";
+import { Plus, Copy, Check, Trash2 } from "lucide-react";
 import { formatDurationShort } from "@/lib/utils";
 
 export default function EmployeesPage() {
@@ -36,6 +37,7 @@ export default function EmployeesPage() {
   const [form, setForm] = useState({ name: "", email: "", teamId: "", designation: "" });
   const [createdPassword, setCreatedPassword] = useState("");
   const [copied, setCopied] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: employees, isLoading } = useQuery({
     queryKey: ["employees", teamFilter, activeFilter],
@@ -76,6 +78,21 @@ export default function EmployeesPage() {
       setCreatedPassword(data.tempPassword);
       toast.success("Employee created");
       setForm({ name: "", email: "", teamId: "", designation: "" });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/employees/${id}`, { method: "DELETE" });
+      const { data, error } = await res.json();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      toast.success("Employee deleted");
+      setDeleteId(null);
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -139,6 +156,22 @@ export default function EmployeesPage() {
         <span className="text-muted-foreground text-sm">
           {emp.timeEntries?.length > 0 ? emp.timeEntries[0]?.project?.name || "Yes" : "--"}
         </span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "",
+      render: (emp: any) => (
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-danger"
+            onClick={(e) => { e.stopPropagation(); setDeleteId(emp.id); }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       ),
     },
   ];
@@ -279,6 +312,16 @@ export default function EmployeesPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={() => setDeleteId(null)}
+        title="Delete Employee"
+        description="Are you sure? This will permanently delete this employee. If they have existing records, they will be deactivated instead."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() => deleteId && deleteMutation.mutate(deleteId)}
+      />
     </div>
   );
 }

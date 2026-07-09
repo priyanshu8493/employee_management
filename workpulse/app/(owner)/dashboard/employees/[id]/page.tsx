@@ -9,9 +9,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DataTable } from "@/components/shared/DataTable";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, UserCheck, UserX, AlertTriangle } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ArrowLeft, UserCheck, UserX, AlertTriangle, Trash2 } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -33,6 +41,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
   const router = useRouter();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: employee, isLoading } = useQuery({
     queryKey: ["employee", id],
@@ -62,6 +71,32 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
       return data || [];
     },
     staleTime: 30000,
+  });
+
+  const { data: teams } = useQuery({
+    queryKey: ["teams"],
+    queryFn: async () => {
+      const res = await fetch("/api/teams");
+      const { data } = await res.json();
+      return data || [];
+    },
+    staleTime: 60000,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/employees/${id}`, { method: "DELETE" });
+      const { data, error } = await res.json();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      toast.success("Employee deleted");
+      setDeleteId(null);
+      router.push("/dashboard/employees");
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const updateMutation = useMutation({
@@ -165,6 +200,13 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
               {employee.isActive ? <UserX className="h-4 w-4 mr-2" /> : <UserCheck className="h-4 w-4 mr-2" />}
               {employee.isActive ? "Deactivate" : "Reactivate"}
             </Button>
+            <Button
+              variant="outline"
+              className="border-danger text-danger"
+              onClick={() => setDeleteId(employee.id)}
+            >
+              <Trash2 className="h-4 w-4 mr-2" /> Delete
+            </Button>
           </div>
         </div>
 
@@ -193,12 +235,34 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
               <Input defaultValue={employee.name} id="edit-name" className="bg-surface border-border text-foreground" />
             </div>
             <div className="space-y-2">
+              <Label className="text-foreground">Email</Label>
+              <Input defaultValue={employee.email} id="edit-email" className="bg-surface border-border text-foreground" />
+            </div>
+            <div className="space-y-2">
               <Label className="text-foreground">Designation</Label>
               <Input defaultValue={employee.designation || ""} id="edit-designation" className="bg-surface border-border text-foreground" />
             </div>
             <div className="space-y-2">
               <Label className="text-foreground">Phone</Label>
               <Input defaultValue={employee.phone || ""} id="edit-phone" className="bg-surface border-border text-foreground" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-foreground">Team</Label>
+              <Select defaultValue={employee.teamId || ""} onValueChange={(v) => {
+                const el = document.getElementById("edit-teamId") as HTMLInputElement;
+                if (el) el.value = v;
+              }}>
+                <SelectTrigger className="bg-surface border-border text-foreground">
+                  <SelectValue placeholder="Select team" />
+                </SelectTrigger>
+                <SelectContent className="bg-surface-raised border-border">
+                  <SelectItem value="">No team</SelectItem>
+                  {(teams || []).map((t: any) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <input type="hidden" id="edit-teamId" defaultValue={employee.teamId || ""} />
             </div>
           </div>
           <div className="flex justify-end gap-3 mt-4">
@@ -207,9 +271,11 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={() => {
                 const name = (document.getElementById("edit-name") as HTMLInputElement)?.value;
+                const email = (document.getElementById("edit-email") as HTMLInputElement)?.value;
                 const designation = (document.getElementById("edit-designation") as HTMLInputElement)?.value;
                 const phone = (document.getElementById("edit-phone") as HTMLInputElement)?.value;
-                if (name) updateMutation.mutate({ name, designation, phone });
+                const teamId = (document.getElementById("edit-teamId") as HTMLInputElement)?.value;
+                if (name) updateMutation.mutate({ name, email: email || undefined, designation, phone, teamId: teamId || null });
               }}
             >
               Save
@@ -313,6 +379,16 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
           )}
         </TabsContent>
       </Tabs>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={() => setDeleteId(null)}
+        title="Delete Employee"
+        description="This will permanently delete this employee and all their data. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() => deleteId && deleteMutation.mutate(deleteId)}
+      />
     </div>
   );
 }

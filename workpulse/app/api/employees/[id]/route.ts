@@ -87,8 +87,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const existing = await prisma.user.findUnique({ where: { id } });
     if (!existing) return apiError("Employee not found", "NOT_FOUND", 404);
 
+    if (parsed.email && parsed.email !== existing.email) {
+      const emailExists = await prisma.user.findUnique({ where: { email: parsed.email } });
+      if (emailExists) return apiError("Email already in use", "DUPLICATE_EMAIL", 409);
+    }
+
     const data: Record<string, unknown> = {};
     if (parsed.name !== undefined) data.name = parsed.name;
+    if (parsed.email !== undefined) data.email = parsed.email;
     if (parsed.teamId !== undefined) data.teamId = parsed.teamId;
     if (parsed.isActive !== undefined) data.isActive = parsed.isActive;
     if (parsed.avatarUrl !== undefined) data.avatarUrl = parsed.avatarUrl;
@@ -123,23 +129,25 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     const existing = await prisma.user.findUnique({
       where: { id },
-      include: { _count: { select: { timeEntries: true } } },
+      include: { _count: { select: { timeEntries: true, leaves: true } } },
     });
     if (!existing) return apiError("Employee not found", "NOT_FOUND", 404);
 
-    if (existing._count.timeEntries > 0) {
+    const hasReferences = existing._count.timeEntries > 0 || existing._count.leaves > 0;
+
+    if (hasReferences) {
       await prisma.user.update({
         where: { id },
         data: { isActive: false },
       });
-      return apiSuccess({ message: "Employee deactivated (has time entries)" });
+      return apiSuccess({ message: "Employee deactivated (has existing records)" });
     }
 
-    await prisma.user.update({
-      where: { id },
-      data: { isActive: false },
-    });
-    return apiSuccess({ message: "Employee deactivated" });
+    await prisma.subTaskAssignment.deleteMany({ where: { userId: id } });
+    await prisma.teamLead.deleteMany({ where: { userId: id } });
+    await prisma.qcMistake.deleteMany({ where: { employeeId: id } });
+    await prisma.user.delete({ where: { id } });
+    return apiSuccess({ deleted: true });
   } catch (error) {
     return handleApiError(error);
   }

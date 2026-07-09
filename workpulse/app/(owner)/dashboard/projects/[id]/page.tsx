@@ -41,7 +41,7 @@ import {
   Legend,
 } from "recharts";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Plus, Trash2, Edit3, Users } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit3, Users, Archive } from "lucide-react";
 import { formatDuration, formatTime, formatDate, formatDurationShort } from "@/lib/utils";
 
 const STATUS_ORDER = ["TODO", "IN_PROGRESS", "DONE"] as const;
@@ -60,6 +60,7 @@ export default function ProjectDetailPage() {
   const [showTeamAssignment, setShowTeamAssignment] = useState(false);
   const [assignSubtask, setAssignSubtask] = useState<any>(null);
   const [assignSelectedIds, setAssignSelectedIds] = useState<string[]>([]);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
@@ -117,6 +118,22 @@ export default function ProjectDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["project", id] });
       toast.success("Project updated");
       setEditing(false);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+      const { data, error } = await res.json();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("Project deleted");
+      setDeleteId(null);
+      router.push("/dashboard/projects");
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -407,6 +424,13 @@ export default function ProjectDetailPage() {
             <Button variant="outline" className="border-border text-foreground" onClick={() => setEditing(!editing)}>
               <Edit3 className="h-4 w-4 mr-2" /> Edit
             </Button>
+            <Button
+              variant="outline"
+              className="border-danger text-danger"
+              onClick={() => setDeleteId(project.id)}
+            >
+              <Trash2 className="h-4 w-4 mr-2" /> Delete
+            </Button>
           </div>
         </div>
 
@@ -439,12 +463,39 @@ export default function ProjectDetailPage() {
                 placeholder="Client or organization"
               />
             </div>
+            <div className="space-y-2 col-span-2">
+              <Label className="text-foreground">Description</Label>
+              <Textarea
+                defaultValue={project.description || ""}
+                id="edit-description"
+                className="bg-surface border-border text-foreground placeholder:text-muted-foreground"
+                placeholder="Brief description..."
+              />
+            </div>
             <div className="space-y-2">
               <Label className="text-foreground">Estimated Hours</Label>
               <Input
                 type="number"
                 defaultValue={project.estimatedHours}
                 id="edit-hours"
+                className="bg-surface border-border text-foreground"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-foreground">Start Date</Label>
+              <Input
+                type="date"
+                defaultValue={project.startDate?.split("T")[0] || ""}
+                id="edit-startDate"
+                className="bg-surface border-border text-foreground"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-foreground">End Date</Label>
+              <Input
+                type="date"
+                defaultValue={project.endDate?.split("T")[0] || ""}
+                id="edit-endDate"
                 className="bg-surface border-border text-foreground"
               />
             </div>
@@ -475,9 +526,20 @@ export default function ProjectDetailPage() {
               onClick={() => {
                 const name = (document.getElementById("edit-name") as HTMLInputElement)?.value;
                 const clientName = (document.getElementById("edit-clientName") as HTMLInputElement)?.value;
+                const description = (document.getElementById("edit-description") as HTMLTextAreaElement)?.value;
                 const hours = parseFloat((document.getElementById("edit-hours") as HTMLInputElement)?.value || "0");
+                const startDate = (document.getElementById("edit-startDate") as HTMLInputElement)?.value;
+                const endDate = (document.getElementById("edit-endDate") as HTMLInputElement)?.value;
                 const color = (document.getElementById("edit-color") as HTMLInputElement)?.value;
-                if (name) updateMutation.mutate({ name, clientName: clientName || undefined, estimatedHours: hours, color });
+                if (name) updateMutation.mutate({
+                  name,
+                  clientName: clientName || undefined,
+                  description: description || undefined,
+                  estimatedHours: hours,
+                  startDate: startDate || undefined,
+                  endDate: endDate || undefined,
+                  color,
+                });
               }}
             >
               Save
@@ -837,6 +899,16 @@ export default function ProjectDetailPage() {
         confirmLabel="Delete"
         variant="destructive"
         onConfirm={() => deleteSubtaskId && deleteSubtaskMutation.mutate(deleteSubtaskId)}
+      />
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={() => setDeleteId(null)}
+        title="Delete Project"
+        description="Are you sure? This will permanently delete the project. If it has time entries, it will be archived instead."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() => deleteId && deleteMutation.mutate(deleteId)}
       />
     </div>
   );

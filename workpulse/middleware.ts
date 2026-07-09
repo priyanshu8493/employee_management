@@ -3,10 +3,11 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 export async function middleware(request: NextRequest) {
+  const useSecureCookie = request.nextUrl.protocol === "https:";
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
-    secureCookie: process.env.NODE_ENV === "production",
+    secureCookie: useSecureCookie,
   });
 
   const { pathname } = request.nextUrl;

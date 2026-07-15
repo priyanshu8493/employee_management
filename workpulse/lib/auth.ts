@@ -88,3 +88,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
 });
+
+if (!process.env.AUTH_SECRET && !process.env.NEXTAUTH_SECRET) {
+  console.error("[auth] FATAL: No AUTH_SECRET or NEXTAUTH_SECRET env var set. Login will fail.");
+}

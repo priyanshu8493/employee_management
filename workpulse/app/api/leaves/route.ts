@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       orderBy: { date: "desc" },
     });
 
-    return apiSuccess(leaves);
+    return apiSuccess(leaves.filter((l) => l.user));
   } catch (error) {
     return handleApiError(error);
   }

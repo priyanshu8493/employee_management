@@ -173,7 +173,7 @@ export async function GET() {
       },
       projectHealth: projectsWithHealth,
       todayActivity: Array.from(todayMap.values()),
-      todayLeaves,
+      todayLeaves: todayLeaves.filter((l) => l.user),
       weeklyChart: weekDays,
     });
   } catch (error) {

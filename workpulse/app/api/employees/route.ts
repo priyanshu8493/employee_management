@@ -79,6 +79,7 @@ export async function GET(request: NextRequest) {
 
     const weekMap = new Map<string, number>();
     for (const agg of weekAggregates) {
+      if (!agg.userId) continue;
       weekMap.set(agg.userId, agg._sum.durationMinutes || 0);
     }
 

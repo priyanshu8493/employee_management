@@ -17,7 +17,7 @@ export async function GET() {
       orderBy: { checkInAt: "desc" },
     });
 
-    return apiSuccess(activeEntries);
+    return apiSuccess(activeEntries.filter((e) => e.user));
   } catch (error) {
     return handleApiError(error);
   }

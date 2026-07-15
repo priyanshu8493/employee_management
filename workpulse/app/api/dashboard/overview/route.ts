@@ -129,6 +129,7 @@ export async function GET() {
 
     const todayMap = new Map<string, typeof todayEntries[0] & { hoursToday: number; isActive: boolean }>();
     for (const entry of todayEntries) {
+      if (!entry.user) continue;
       const existing = todayMap.get(entry.user.id);
       if (existing) {
         existing.hoursToday += entry.durationMinutes || 0;

@@ -50,7 +50,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             avatarUrl: user.avatarUrl,
             teamId: user.teamId,
           };
-        } catch {
+        } catch (error) {
+          console.error("[auth] Login error:", error);
           return null;
         }
       },

@@ -118,20 +118,6 @@ export default function EmployeeDetailPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  if (isLoading) {
-    return <div className="space-y-6">
-      <div className="h-8 w-48 bg-surface-raised rounded animate-pulse" />
-      <div className="h-48 bg-surface-raised rounded-xl animate-pulse" />
-    </div>;
-  }
-
-  if (!employee) {
-    return <div className="text-center py-16 text-muted-foreground">Employee not found</div>;
-  }
-
-  const stats = employee.stats || {};
-  const projectBreakdown = stats.projectBreakdown || [];
-
   const monthlyChartData = useMemo(() => {
     const months = Array.from({ length: 12 }, (_, i) => {
       const d = new Date();
@@ -149,6 +135,20 @@ export default function EmployeeDetailPage() {
     }
     return months.map((m) => ({ month: m.label, hours: Math.round(m.hours * 10) / 10 }));
   }, [timeEntries]);
+
+  if (isLoading) {
+    return <div className="space-y-6">
+      <div className="h-8 w-48 bg-surface-raised rounded animate-pulse" />
+      <div className="h-48 bg-surface-raised rounded-xl animate-pulse" />
+    </div>;
+  }
+
+  if (!employee) {
+    return <div className="text-center py-16 text-muted-foreground">Employee not found</div>;
+  }
+
+  const stats = employee.stats || {};
+  const projectBreakdown = stats.projectBreakdown || [];
 
   const timeColumns = [
     { key: "checkInAt", header: "Date", sortable: true, render: (e: any) => formatDate(e.checkInAt) },

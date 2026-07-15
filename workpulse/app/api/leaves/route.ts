@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiSuccess, apiError, handleApiError, requireAuth } from "@/lib/api-utils";
+export const runtime = "nodejs";
+
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,9 +38,7 @@ export async function GET(request: NextRequest) {
       const endOfDay = new Date(startOfDay);
       endOfDay.setDate(endOfDay.getDate() + 1);
       where.date = { gte: startOfDay, lt: endOfDay };
-    }
-
-    if (upcoming === "true") {
+    } else if (upcoming === "true") {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       where.date = { gte: today };

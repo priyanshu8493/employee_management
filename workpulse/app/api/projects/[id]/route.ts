@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiSuccess, apiError, handleApiError, requireRole, getAuthSession } from "@/lib/api-utils";
 import { projectSchema } from "@/lib/validations";
+export const runtime = "nodejs";
+
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {

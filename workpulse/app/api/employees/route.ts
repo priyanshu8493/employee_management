@@ -3,6 +3,9 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { apiSuccess, apiError, handleApiError, requireRole, requireAuth, getAuthSession } from "@/lib/api-utils";
 import { employeeSchema } from "@/lib/validations";
+import { generatePassword } from "@/lib/utils";
+export const runtime = "nodejs";
+
 
 export async function GET(request: NextRequest) {
   try {
@@ -99,7 +102,7 @@ export async function POST(request: NextRequest) {
     const existing = await prisma.user.findUnique({ where: { email: parsed.email } });
     if (existing) return apiError("Email already in use", "DUPLICATE_EMAIL", 409);
 
-    const password = parsed.password || Math.random().toString(36).slice(-10) + "Aa1!";
+    const password = parsed.password || generatePassword(12);
     const passwordHash = await bcrypt.hash(password, 12);
 
     const employee = await prisma.user.create({

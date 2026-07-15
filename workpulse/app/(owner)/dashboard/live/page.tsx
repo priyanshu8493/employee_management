@@ -1,23 +1,30 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { formatDuration } from "@/lib/utils";
-import { Radio, Clock } from "lucide-react";
+import { Radio } from "lucide-react";
 
 function LiveTimerDisplay({ checkInAt }: { checkInAt: string }) {
-  const start = new Date(checkInAt).getTime();
-  const elapsed = Math.floor((Date.now() - start) / 1000);
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const start = new Date(checkInAt).getTime();
+    const tick = () => setElapsed(Math.floor((Date.now() - start) / 1000));
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [checkInAt]);
+
   const h = Math.floor(elapsed / 3600);
   const m = Math.floor((elapsed % 3600) / 60);
   const s = elapsed % 60;
   const display = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 
-  // Use CSS animation to force re-render
   return (
-    <span className="font-mono tabular-nums text-success" key={elapsed}>
+    <span className="font-mono tabular-nums text-success">
       {display}
     </span>
   );

@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { apiSuccess, apiError, handleApiError, requireRole } from "@/lib/api-utils";
 import { teamSchema } from "@/lib/validations";
 import { mergeMemberIds, promoteTeamLeads } from "@/lib/team-sync";
+export const runtime = "nodejs";
+
 
 export async function GET() {
   try {

@@ -1,11 +1,12 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiSuccess, apiError, handleApiError, requireAuth } from "@/lib/api-utils";
+export const runtime = "nodejs";
+
 
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAuth();
-    const { searchParams } = new URL(request.url);
 
     const activeEntry = await prisma.timeEntry.findFirst({
       where: { userId: session.user.id, checkOutAt: null },

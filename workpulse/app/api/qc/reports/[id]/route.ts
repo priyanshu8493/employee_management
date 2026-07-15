@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiSuccess, apiError, handleApiError, getAuthSession } from "@/lib/api-utils";
+export const runtime = "nodejs";
+
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -12,7 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const report = await prisma.qcReport.findUnique({
       where: { id },
       include: {
-        team: { select: { id: true, name: true } },
+        team: { select: { id: true, name: true, members: { select: { id: true } } } },
         teamLead: { select: { id: true, name: true, avatarUrl: true } },
         mistakes: {
           include: {
@@ -25,8 +27,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     if (!report) return apiError("QC report not found", "NOT_FOUND", 404);
 
-    if (session.user.role === "EMPLOYEE" && report.mistakes.every((m) => m.employeeId !== session.user.id)) {
-      return apiError("Forbidden", "FORBIDDEN", 403);
+    if (session.user.role === "EMPLOYEE") {
+      const hasMistake = report.mistakes.some((m) => m.employeeId === session.user.id);
+      const isOwnTeam = report.team?.members?.some((m: { id: string }) => m.id === session.user.id);
+      if (!hasMistake && !isOwnTeam) {
+        return apiError("Forbidden", "FORBIDDEN", 403);
+      }
     }
 
     if (session.user.role === "TEAM_LEADER" && report.teamLeadId !== session.user.id) {

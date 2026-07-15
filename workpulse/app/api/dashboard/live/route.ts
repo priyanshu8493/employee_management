@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { apiSuccess, handleApiError, requireRole } from "@/lib/api-utils";
+export const runtime = "nodejs";
+
 
 export async function GET() {
   try {

@@ -35,7 +35,6 @@ export async function GET() {
         select: {
           id: true,
           estimatedHours: true,
-          timeEntries: { where: { durationMinutes: { not: null } }, select: { durationMinutes: true } },
         },
       }),
 
@@ -80,7 +79,7 @@ export async function GET() {
       }),
 
       prisma.leave.findMany({
-        where: { date: startOfDay },
+        where: { date: { gte: startOfDay, lt: dayEnd } },
         select: {
           id: true,
           user: { select: { id: true, name: true, email: true, avatarUrl: true, team: { select: { id: true, name: true } } } },
@@ -101,11 +100,6 @@ export async function GET() {
       }),
     ]);
 
-    const overEstimateCount = projectsOverEstimate.filter((p) => {
-      const totalHours = p.timeEntries.reduce((sum, e) => sum + (e.durationMinutes || 0), 0) / 60;
-      return totalHours >= p.estimatedHours;
-    }).length;
-
     const projectsWithTime = await prisma.timeEntry.groupBy({
       by: ["projectId"],
       where: { durationMinutes: { not: null } },
@@ -115,6 +109,11 @@ export async function GET() {
     for (const agg of projectsWithTime) {
       timeByProject.set(agg.projectId, agg._sum.durationMinutes || 0);
     }
+
+    const overEstimateCount = projectsOverEstimate.filter((p) => {
+      const totalHours = (timeByProject.get(p.id) || 0) / 60;
+      return totalHours >= p.estimatedHours;
+    }).length;
 
     const projectsWithHealth = projects.map((p) => {
       const totalMinutes = timeByProject.get(p.id) || 0;

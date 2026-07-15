@@ -68,7 +68,7 @@ export function EmployeeSidebar() {
 
         <nav className="flex-1 py-4 px-3 space-y-1">
           {(session?.user?.role === "TEAM_LEADER" ? teamLeaderNavItems : employeeNavItems).map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = item.icon;
             return (
               <Link

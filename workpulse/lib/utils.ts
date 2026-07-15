@@ -104,8 +104,10 @@ export function startOfMonth(date: Date = new Date()): Date {
 export function generatePassword(length: number = 10): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$";
   let password = "";
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
   for (let i = 0; i < length; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
+    password += chars.charAt(array[i] % chars.length);
   }
   return password;
 }

@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { apiSuccess, apiError, handleApiError, requireAuth, requireRole, getAuthSession } from "@/lib/api-utils";
 import { employeeSchema, changePasswordSchema } from "@/lib/validations";
+export const runtime = "nodejs";
+
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -174,9 +176,10 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return apiSuccess({ message: "Employee deactivated (has existing records)" });
     }
 
+    await prisma.qcReport.deleteMany({ where: { teamLeadId: id } });
+    await prisma.qcMistake.deleteMany({ where: { employeeId: id } });
     await prisma.subTaskAssignment.deleteMany({ where: { userId: id } });
     await prisma.teamLead.deleteMany({ where: { userId: id } });
-    await prisma.qcMistake.deleteMany({ where: { employeeId: id } });
     await prisma.user.delete({ where: { id } });
     return apiSuccess({ deleted: true });
   } catch (error) {

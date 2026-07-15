@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -32,12 +32,18 @@ export default function EmployeeProfilePage() {
   const profileForm = useForm({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      name: session?.user?.name || "",
+      name: "",
       phone: "",
       avatarUrl: "",
       designation: "",
     },
   });
+
+  useEffect(() => {
+    if (session?.user?.name) {
+      profileForm.reset({ name: session.user.name, phone: "", avatarUrl: "", designation: "" });
+    }
+  }, [session?.user?.name]);
 
   const passwordForm = useForm({
     resolver: zodResolver(passwordSchema),

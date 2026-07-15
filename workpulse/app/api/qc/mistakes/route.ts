@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiSuccess, apiError, handleApiError, getAuthSession } from "@/lib/api-utils";
+export const runtime = "nodejs";
+
 
 export async function GET(request: NextRequest) {
   try {

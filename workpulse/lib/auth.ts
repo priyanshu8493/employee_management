@@ -28,23 +28,42 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         try {
           if (!credentials?.email || !credentials?.password) {
+            console.error("[auth] Missing email or password");
             return null;
           }
 
           const email = (credentials.email as string).toLowerCase().trim();
           const password = credentials.password as string;
 
-          const user = await prisma.user.findUnique({
-            where: { email },
-          });
+          let user;
+          try {
+            user = await prisma.user.findUnique({
+              where: { email },
+            });
+          } catch (dbError) {
+            console.error("[auth] Database connection error:", dbError);
+            return null;
+          }
 
-          if (!user) return null;
-          if (user.isActive === false) return null;
-          if (!user.passwordHash) return null;
+          if (!user) {
+            console.error("[auth] User not found:", email);
+            return null;
+          }
+          if (user.isActive === false) {
+            console.error("[auth] User is inactive:", email);
+            return null;
+          }
+          if (!user.passwordHash) {
+            console.error("[auth] User has no password hash:", email);
+            return null;
+          }
 
           const isValid = await bcrypt.compare(password, user.passwordHash);
 
-          if (!isValid) return null;
+          if (!isValid) {
+            console.error("[auth] Invalid password for:", email);
+            return null;
+          }
 
           return {
             id: user.id,
@@ -55,7 +74,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             teamId: user.teamId,
           };
         } catch (error) {
-          console.error("[auth] Login error:", error);
+          console.error("[auth] Unexpected login error:", error);
           return null;
         }
       },

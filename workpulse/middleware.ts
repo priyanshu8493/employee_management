@@ -3,7 +3,8 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 export async function middleware(request: NextRequest) {
-  const useSecureCookie = request.nextUrl.protocol === "https:";
+  const useSecureCookie = request.nextUrl.protocol === "https:" || request.headers.get("x-forwarded-proto") === "https";
+
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
@@ -14,8 +15,10 @@ export async function middleware(request: NextRequest) {
   const isLoginPage = pathname === "/login";
   const isEmployeeRoute = pathname.startsWith("/employee");
   const isDashboardRoute = pathname.startsWith("/dashboard");
+  const isApiRoute = pathname.startsWith("/api");
 
-  // Unauthenticated → redirect to login with callbackUrl
+  if (isApiRoute) return NextResponse.next();
+
   if (!token) {
     if (!isLoginPage) {
       const loginUrl = new URL("/login", request.url);
@@ -25,7 +28,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Authenticated on login page → redirect based on role
   if (isLoginPage) {
     if (token.role === "OWNER") {
       return NextResponse.redirect(new URL("/dashboard", request.url));
@@ -33,7 +35,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/employee", request.url));
   }
 
-  // RBAC: OWNER → /dashboard only; TEAM_LEADER/EMPLOYEE → /employee only
   if (isDashboardRoute && token.role !== "OWNER") {
     return NextResponse.redirect(new URL("/employee", request.url));
   }

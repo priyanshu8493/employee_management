@@ -129,6 +129,14 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      if (parsed.markDone) {
+        await prisma.subTask.update({
+          where: { id: entry.subTaskId },
+          data: { status: "DONE" },
+        });
+        updated.subTask = { ...updated.subTask, status: "DONE" };
+      }
+
       return apiSuccess(updated);
     }
 

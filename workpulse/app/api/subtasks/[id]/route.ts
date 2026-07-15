@@ -21,9 +21,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const assignedUserIds = existing.assignments.map((a) => a.userId);
 
-    // Employees can only mark their own assigned subtasks as DONE
+    // Employees can mark their assigned subtasks, or any subtask they have logged time on, as DONE
     if (session.user.role === "EMPLOYEE") {
-      if (!assignedUserIds.includes(session.user.id)) {
+      const hasWorkedOn = await prisma.timeEntry.findFirst({
+        where: { userId: session.user.id, subTaskId: id },
+        select: { id: true },
+      });
+      if (!assignedUserIds.includes(session.user.id) && !hasWorkedOn) {
         return apiError("This task is not assigned to you", "FORBIDDEN", 403);
       }
       if (Object.keys(parsed).length !== 1 || parsed.status !== "DONE") {

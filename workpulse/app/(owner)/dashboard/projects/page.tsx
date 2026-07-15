@@ -214,7 +214,7 @@ export default function ProjectsPage() {
       key: "progress",
       header: "Progress",
       render: (p: any) => {
-        const totalHours = p.timeEntries?.reduce((s: number, e: any) => s + (e.durationMinutes || 0), 0) / 60 || 0;
+        const totalHours = ((p as any).totalMinutes || 0) / 60;
         return (
           <div className="w-32">
             <ProgressBar value={Math.round(totalHours * 10) / 10} max={p.estimatedHours || 1} />
@@ -327,7 +327,7 @@ export default function ProjectsPage() {
             </div>
           ) : (
             projects.map((project: any) => {
-              const totalHours = project.timeEntries?.reduce((s: number, e: any) => s + (e.durationMinutes || 0), 0) / 60 || 0;
+              const totalHours = ((project as any).totalMinutes || 0) / 60;
               return (
                 <Card
                   key={project.id}
@@ -371,7 +371,7 @@ export default function ProjectsPage() {
                         className="text-muted-foreground h-7 w-7 p-0 hover:text-danger"
                         onClick={(e) => { e.stopPropagation(); setArchiveId(project.id); }}
                       >
-                        <Archive className="h-3.5 w-3.5" />
+                        <Archive className="h-4 w-4" />
                       </Button>
                     )}
                     <Button

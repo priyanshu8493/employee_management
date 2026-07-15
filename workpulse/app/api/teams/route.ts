@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiSuccess, apiError, handleApiError, requireRole } from "@/lib/api-utils";
 import { teamSchema } from "@/lib/validations";
+import { mergeMemberIds, promoteTeamLeads } from "@/lib/team-sync";
 
 export async function GET() {
   try {
@@ -27,6 +28,7 @@ export async function POST(request: NextRequest) {
     await requireRole("OWNER");
     const body = await request.json();
     const parsed = teamSchema.parse(body);
+    const memberIds = mergeMemberIds(parsed.memberIds, parsed.teamLeadIds);
 
     const team = await prisma.team.create({
       data: {
@@ -35,8 +37,8 @@ export async function POST(request: NextRequest) {
         teamLeads: parsed.teamLeadIds?.length
           ? { create: parsed.teamLeadIds.map((userId) => ({ userId })) }
           : undefined,
-        members: parsed.memberIds?.length
-          ? { connect: parsed.memberIds.map((id) => ({ id })) }
+        members: memberIds.length
+          ? { connect: memberIds.map((id) => ({ id })) }
           : undefined,
       },
       include: {
@@ -44,6 +46,10 @@ export async function POST(request: NextRequest) {
         teamLeads: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
       },
     });
+
+    if (parsed.teamLeadIds?.length) {
+      await promoteTeamLeads(team.id, parsed.teamLeadIds);
+    }
 
     return apiSuccess(team);
   } catch (error) {

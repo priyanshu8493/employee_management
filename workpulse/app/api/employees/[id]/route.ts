@@ -13,32 +13,29 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return apiError("Forbidden", "FORBIDDEN", 403);
     }
 
-    const employee = await prisma.user.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        avatarUrl: true,
-        phone: true,
-        designation: true,
-        isActive: true,
-        role: true,
-        teamId: true,
-        team: { select: { id: true, name: true } },
-        createdAt: true,
-      },
-    });
-
-    if (!employee) return apiError("Employee not found", "NOT_FOUND", 404);
-
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startOfWeek = new Date(startOfDay);
     startOfWeek.setDate(startOfWeek.getDate() - ((startOfWeek.getDay() + 6) % 7));
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [todayAgg, weekAgg, monthAgg, projectBreakdown] = await Promise.all([
+    const [employee, todayAgg, weekAgg, monthAgg, projectBreakdown] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          avatarUrl: true,
+          phone: true,
+          designation: true,
+          isActive: true,
+          role: true,
+          teamId: true,
+          team: { select: { id: true, name: true } },
+          createdAt: true,
+        },
+      }),
       prisma.timeEntry.aggregate({
         where: { userId: id, checkInAt: { gte: startOfDay }, durationMinutes: { not: null } },
         _sum: { durationMinutes: true },
@@ -58,15 +55,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }),
     ]);
 
-    const projectsWithNames = await Promise.all(
-      projectBreakdown.map(async (p) => {
-        const project = await prisma.project.findUnique({
-          where: { id: p.projectId },
-          select: { id: true, name: true, color: true },
-        });
-        return { ...project, totalMinutes: p._sum.durationMinutes || 0 };
-      })
-    );
+    if (!employee) return apiError("Employee not found", "NOT_FOUND", 404);
+
+    const projectIds = projectBreakdown.map((p) => p.projectId);
+    const projects = await prisma.project.findMany({
+      where: { id: { in: projectIds } },
+      select: { id: true, name: true, color: true },
+    });
+    const projectMap = new Map(projects.map((p) => [p.id, p]));
+
+    const projectsWithNames = projectBreakdown.map((p) => {
+      const project = projectMap.get(p.projectId);
+      return { ...project, totalMinutes: p._sum.durationMinutes || 0 };
+    });
 
     return apiSuccess({
       ...employee,
@@ -129,6 +130,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (parsed.avatarUrl !== undefined) data.avatarUrl = parsed.avatarUrl;
     if (parsed.phone !== undefined) data.phone = parsed.phone;
     if (parsed.designation !== undefined) data.designation = parsed.designation;
+    if (parsed.role !== undefined && isOwner) data.role = parsed.role;
     if (parsed.password) {
       data.passwordHash = await bcrypt.hash(parsed.password, 12);
     }

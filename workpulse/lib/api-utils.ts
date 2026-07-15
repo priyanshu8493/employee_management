@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import { ZodError } from "zod";
 import type { ApiResponse } from "@/types";
 
 export function apiSuccess<T>(data: T, meta?: Record<string, unknown>): NextResponse<ApiResponse<T>> {
@@ -33,6 +34,9 @@ export async function requireRole(role: string) {
 
 export function handleApiError(error: unknown): NextResponse<ApiResponse> {
   console.error("API Error:", error);
+  if (error instanceof ZodError) {
+    return apiError("Validation failed", "VALIDATION_ERROR", 400);
+  }
   if (error instanceof Error) {
     if (error.message === "Unauthorized") {
       return apiError("Authentication required", "UNAUTHORIZED", 401);

@@ -4,6 +4,15 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import type { Role } from "@prisma/client";
 
+interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: Role;
+  avatarUrl: string | null;
+  teamId: string | null;
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
@@ -15,7 +24,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         try {
           if (!credentials?.email || !credentials?.password) {
-            console.error("Auth Error: Missing credentials");
             return null;
           }
 
@@ -26,29 +34,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             where: { email },
           });
 
-          if (!user) {
-            console.error(`Auth Error: No user found with email ${email}`);
-            return null;
-          }
-
-          if (user.isActive === false) {
-            console.error(`Auth Error: Account for ${email} is inactive`);
-            return null;
-          }
-
-          if (!user.passwordHash) {
-            console.error(`Auth Error: User ${email} has no password set`);
-            return null;
-          }
+          if (!user) return null;
+          if (user.isActive === false) return null;
+          if (!user.passwordHash) return null;
 
           const isValid = await bcrypt.compare(password, user.passwordHash);
 
-          if (!isValid) {
-            console.error(`Auth Error: Invalid password for ${email}`);
-            return null;
-          }
-
-          console.log(`Auth Success: User ${email} logged in successfully`);
+          if (!isValid) return null;
 
           return {
             id: user.id,
@@ -58,8 +50,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             avatarUrl: user.avatarUrl,
             teamId: user.teamId,
           };
-        } catch (error) {
-          console.error("Auth Exception:", error);
+        } catch {
           return null;
         }
       },
@@ -68,10 +59,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id as string;
-        token.role = (user as any).role as Role;
-        token.avatarUrl = (user as any).avatarUrl as string | null;
-        token.teamId = (user as any).teamId as string | null;
+        const authUser = user as AuthUser;
+        token.id = authUser.id;
+        token.role = authUser.role;
+        token.avatarUrl = authUser.avatarUrl;
+        token.teamId = authUser.teamId;
       }
       return token;
     },

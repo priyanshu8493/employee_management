@@ -164,17 +164,6 @@ export default function EmployeeHomePage() {
       });
       const { data, error } = await res.json();
       if (error) throw new Error(error.message);
-
-      if (markTaskDone && activeSession?.subTask?.id) {
-        const doneRes = await fetch(`/api/subtasks/${activeSession.subTask.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "DONE" }),
-        });
-        const result = await doneRes.json();
-        if (result.error) throw new Error(result.error.message);
-      }
-
       return data;
     },
     onSuccess: () => {

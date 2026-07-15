@@ -1,6 +1,7 @@
-import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiSuccess, handleApiError, requireRole } from "@/lib/api-utils";
+
+export const runtime = "nodejs";
 
 export async function GET() {
   try {
@@ -12,52 +13,111 @@ export async function GET() {
     startOfWeek.setDate(startOfWeek.getDate() - ((startOfWeek.getDay() + 6) % 7));
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const activeEmployees = await prisma.timeEntry.count({
-      where: { checkOutAt: null },
-    });
+    const dayEnd = new Date(startOfDay);
+    dayEnd.setHours(23, 59, 59, 999);
 
-    const weekEntries = await prisma.timeEntry.aggregate({
-      where: { checkInAt: { gte: startOfWeek }, durationMinutes: { not: null } },
-      _sum: { durationMinutes: true },
-    });
+    const weekEnd = new Date(startOfWeek);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
 
-    const projectsOverEstimate = await prisma.project.findMany({
-      where: { status: "ACTIVE", estimatedHours: { gt: 0 } },
-      include: {
-        _count: { select: { timeEntries: true } },
-        timeEntries: { where: { durationMinutes: { not: null } }, select: { durationMinutes: true } },
-      },
-    });
+    const [activeEmployees, weekEntries, projectsOverEstimate, completedThisMonth, projects, todayEntries, todayLeaves, weekTimeEntries] = await Promise.all([
+      prisma.timeEntry.count({
+        where: { checkOutAt: null },
+      }),
+
+      prisma.timeEntry.aggregate({
+        where: { checkInAt: { gte: startOfWeek }, durationMinutes: { not: null } },
+        _sum: { durationMinutes: true },
+      }),
+
+      prisma.project.findMany({
+        where: { status: "ACTIVE", estimatedHours: { gt: 0 } },
+        select: {
+          id: true,
+          estimatedHours: true,
+          timeEntries: { where: { durationMinutes: { not: null } }, select: { durationMinutes: true } },
+        },
+      }),
+
+      prisma.project.count({
+        where: {
+          status: "COMPLETED",
+          updatedAt: { gte: startOfMonth },
+        },
+      }),
+
+      prisma.project.findMany({
+        where: { status: { not: "ARCHIVED" } },
+        select: {
+          id: true,
+          name: true,
+          color: true,
+          status: true,
+          estimatedHours: true,
+          updatedAt: true,
+          _count: { select: { subTasks: true } },
+          projectTeams: {
+            select: {
+              team: { select: { id: true, name: true, members: { select: { id: true, name: true, avatarUrl: true } } } },
+            },
+          },
+        },
+        orderBy: { updatedAt: "desc" },
+      }),
+
+      prisma.timeEntry.findMany({
+        where: { checkInAt: { gte: startOfDay } },
+        select: {
+          id: true,
+          checkInAt: true,
+          checkOutAt: true,
+          durationMinutes: true,
+          user: { select: { id: true, name: true, email: true, avatarUrl: true, team: { select: { id: true, name: true } } } },
+          project: { select: { id: true, name: true, color: true } },
+          subTask: { select: { id: true, name: true } },
+        },
+        orderBy: { checkInAt: "desc" },
+      }),
+
+      prisma.leave.findMany({
+        where: { date: startOfDay },
+        select: {
+          id: true,
+          user: { select: { id: true, name: true, email: true, avatarUrl: true, team: { select: { id: true, name: true } } } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+
+      prisma.timeEntry.findMany({
+        where: {
+          checkInAt: { gte: startOfWeek, lte: weekEnd },
+          durationMinutes: { not: null },
+        },
+        select: {
+          checkInAt: true,
+          durationMinutes: true,
+          project: { select: { id: true, name: true, color: true } },
+        },
+      }),
+    ]);
 
     const overEstimateCount = projectsOverEstimate.filter((p) => {
       const totalHours = p.timeEntries.reduce((sum, e) => sum + (e.durationMinutes || 0), 0) / 60;
       return totalHours >= p.estimatedHours;
     }).length;
 
-    const completedThisMonth = await prisma.project.count({
-      where: {
-        status: "COMPLETED",
-        updatedAt: { gte: startOfMonth },
-      },
+    const projectsWithTime = await prisma.timeEntry.groupBy({
+      by: ["projectId"],
+      where: { durationMinutes: { not: null } },
+      _sum: { durationMinutes: true },
     });
-
-    const projects = await prisma.project.findMany({
-      where: { status: { not: "ARCHIVED" } },
-      include: {
-        _count: { select: { subTasks: true } },
-        projectTeams: {
-          include: { team: { select: { id: true, name: true, members: { select: { id: true, name: true, avatarUrl: true } } } } },
-        },
-        timeEntries: {
-          where: { durationMinutes: { not: null } },
-          select: { durationMinutes: true },
-        },
-      },
-      orderBy: { updatedAt: "desc" },
-    });
+    const timeByProject = new Map<string, number>();
+    for (const agg of projectsWithTime) {
+      timeByProject.set(agg.projectId, agg._sum.durationMinutes || 0);
+    }
 
     const projectsWithHealth = projects.map((p) => {
-      const totalMinutes = p.timeEntries.reduce((sum, e) => sum + (e.durationMinutes || 0), 0);
+      const totalMinutes = timeByProject.get(p.id) || 0;
       const totalHours = totalMinutes / 60;
       const progressPercent = p.estimatedHours > 0 ? Math.min((totalHours / p.estimatedHours) * 100, 999) : 0;
       return {
@@ -66,16 +126,6 @@ export async function GET() {
         progressPercent: Math.round(progressPercent * 10) / 10,
         activeWorkers: 0,
       };
-    });
-
-    const todayEntries = await prisma.timeEntry.findMany({
-      where: { checkInAt: { gte: startOfDay } },
-      include: {
-        user: { select: { id: true, name: true, email: true, avatarUrl: true, team: { select: { id: true, name: true } } } },
-        project: { select: { id: true, name: true, color: true } },
-        subTask: { select: { id: true, name: true } },
-      },
-      orderBy: { checkInAt: "desc" },
     });
 
     const todayMap = new Map<string, typeof todayEntries[0] & { hoursToday: number; isActive: boolean }>();
@@ -92,34 +142,19 @@ export async function GET() {
       }
     }
 
-    const todayLeaves = await prisma.leave.findMany({
-      where: { date: startOfDay },
-      include: {
-        user: { select: { id: true, name: true, email: true, avatarUrl: true, team: { select: { id: true, name: true } } } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    // Weekly data for chart
     const weekDays: { date: Date; dayName: string; hours: Record<string, number> }[] = [];
     for (let i = 0; i < 7; i++) {
       const day = new Date(startOfWeek);
       day.setDate(day.getDate() + i);
-      const dayEnd = new Date(day);
-      dayEnd.setHours(23, 59, 59, 999);
-
-      const dayEntries = await prisma.timeEntry.findMany({
-        where: {
-          checkInAt: { gte: day, lte: dayEnd },
-          durationMinutes: { not: null },
-        },
-        select: { durationMinutes: true, project: { select: { id: true, name: true, color: true } } },
-      });
+      const dayStr = day.toISOString().split("T")[0];
 
       const projectHours: Record<string, number> = {};
-      for (const e of dayEntries) {
-        const key = e.project.id;
-        projectHours[key] = (projectHours[key] || 0) + (e.durationMinutes || 0);
+      for (const entry of weekTimeEntries) {
+        const entryDay = new Date(entry.checkInAt).toISOString().split("T")[0];
+        if (entryDay === dayStr) {
+          const key = entry.project.id;
+          projectHours[key] = (projectHours[key] || 0) + (entry.durationMinutes || 0);
+        }
       }
 
       weekDays.push({

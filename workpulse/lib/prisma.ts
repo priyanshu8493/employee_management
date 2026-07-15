@@ -3,28 +3,29 @@ import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const prismaClientSingleton = () => {
-  const connectionString = process.env.DATABASE_URL!.split('?')[0];
+  const databaseUrl = process.env.DATABASE_URL!;
+  const connectionString = databaseUrl.split("?")[0];
+  const isLocal =
+    connectionString.includes("localhost") || connectionString.includes("127.0.0.1");
 
   const pool = new Pool({
     connectionString,
-    ssl: {
-      rejectUnauthorized: false,
-    },
-    max: 1,
-    idleTimeoutMillis: 500,
-    connectionTimeoutMillis: 10000,
-    allowExitOnIdle: true,
+    ...(isLocal ? {} : { ssl: { rejectUnauthorized: false } }),
+    max: isLocal ? 2 : 10,
+    min: isLocal ? 0 : 2,
+    idleTimeoutMillis: isLocal ? 10000 : 30000,
+    connectionTimeoutMillis: isLocal ? 5000 : 30000,
+    keepAlive: true,
   });
 
   const adapter = new PrismaPg(pool);
-  return new PrismaClient({ adapter });
+  return new PrismaClient({ adapter, log: isLocal ? ['error', 'warn'] : ['error'] });
 };
 
 declare const globalThis: {
   prismaGlobal: ReturnType<typeof prismaClientSingleton>;
 } & typeof global;
 
-// FIX: Exporting as a 'named' export so your API routes can read it!
 export const prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
 
 if (process.env.NODE_ENV !== 'production') globalThis.prismaGlobal = prisma;

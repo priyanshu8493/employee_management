@@ -30,6 +30,7 @@ export const employeeSchema = z.object({
   email: z.string().email("Invalid email"),
   password: z.string().min(6, "Password must be at least 6 characters").optional(),
   currentPassword: z.string().optional(),
+  role: z.enum(["EMPLOYEE", "TEAM_LEADER"]).optional(),
   teamId: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
   avatarUrl: z.string().optional().nullable(),
@@ -53,6 +54,7 @@ export const checkInSchema = z.object({
 export const checkOutSchema = z.object({
   timeEntryId: z.string().min(1, "Time entry ID is required"),
   notes: z.string().optional(),
+  markDone: z.boolean().optional(),
 });
 
 export const changePasswordSchema = z.object({

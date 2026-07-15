@@ -15,7 +15,6 @@ export async function GET(request: NextRequest) {
 
     const where: Record<string, unknown> = {};
 
-    // Non-OWNER roles can only see projects assigned to their team
     if (session.user.role !== "OWNER") {
       const user = await prisma.user.findUnique({
         where: { id: session.user.id },
@@ -32,22 +31,42 @@ export async function GET(request: NextRequest) {
       where.name = { contains: search, mode: "insensitive" };
     }
 
-    const projects = await prisma.project.findMany({
-      where,
-      include: {
-        _count: { select: { subTasks: true, timeEntries: true } },
-        projectTeams: {
-          include: { team: { select: { id: true, name: true } } },
+    const [projects, timeAggregates] = await Promise.all([
+      prisma.project.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          color: true,
+          status: true,
+          estimatedHours: true,
+          updatedAt: true,
+          _count: { select: { subTasks: true, timeEntries: true } },
+          projectTeams: {
+            select: { team: { select: { id: true, name: true } } },
+          },
         },
-        timeEntries: {
-          where: { durationMinutes: { not: null } },
-          select: { durationMinutes: true },
-        },
-      },
-      orderBy: { updatedAt: "desc" },
-    });
+        orderBy: { updatedAt: "desc" },
+      }),
+      prisma.timeEntry.groupBy({
+        by: ["projectId"],
+        where: { durationMinutes: { not: null } },
+        _sum: { durationMinutes: true },
+      }),
+    ]);
 
-    return apiSuccess(projects);
+    const timeByProject = new Map<string, number>();
+    for (const agg of timeAggregates) {
+      timeByProject.set(agg.projectId, agg._sum.durationMinutes || 0);
+    }
+
+    const projectsWithTime = projects.map((p) => ({
+      ...p,
+      timeEntries: undefined,
+      totalMinutes: timeByProject.get(p.id) || 0,
+    }));
+
+    return apiSuccess(projectsWithTime);
   } catch (error) {
     return handleApiError(error);
   }

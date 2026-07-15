@@ -100,7 +100,9 @@ export function EmployeeSidebar() {
               <p className="text-sm font-medium text-sidebar-foreground truncate">
                 {session?.user?.name}
               </p>
-              <p className="text-xs text-muted-foreground truncate">Employee</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {session?.user?.role === "TEAM_LEADER" ? "Team Leader" : "Employee"}
+              </p>
             </div>
           </div>
           <Button

@@ -35,52 +35,54 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const employees = await prisma.user.findMany({
-      where,
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        avatarUrl: true,
-        phone: true,
-        designation: true,
-        isActive: true,
-        teamId: true,
-        team: { select: { id: true, name: true } },
-        createdAt: true,
-        timeEntries: {
-          where: { checkOutAt: null },
-          take: 1,
-          include: { project: { select: { id: true, name: true } } },
-        },
-      },
-      orderBy: { name: "asc" },
-    });
+    const weekStart = new Date();
+    const dayOfWeek = weekStart.getDay();
+    const diffToMonday = (dayOfWeek + 6) % 7;
+    weekStart.setDate(weekStart.getDate() - diffToMonday);
+    weekStart.setHours(0, 0, 0, 0);
 
-    const employeesWithStats = await Promise.all(
-      employees.map(async (emp) => {
-        const weekStart = new Date();
-        const dayOfWeek = weekStart.getDay();
-        const diffToMonday = (dayOfWeek + 6) % 7;
-        weekStart.setDate(weekStart.getDate() - diffToMonday);
-        weekStart.setHours(0, 0, 0, 0);
-
-        const weekEntries = await prisma.timeEntry.aggregate({
-          where: {
-            userId: emp.id,
-            checkInAt: { gte: weekStart },
-            durationMinutes: { not: null },
+    const [employees, weekAggregates] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          avatarUrl: true,
+          phone: true,
+          designation: true,
+          isActive: true,
+          teamId: true,
+          team: { select: { id: true, name: true } },
+          createdAt: true,
+          timeEntries: {
+            where: { checkOutAt: null },
+            take: 1,
+            include: { project: { select: { id: true, name: true } } },
           },
-          _sum: { durationMinutes: true },
-        });
+        },
+        orderBy: { name: "asc" },
+      }),
+      prisma.timeEntry.groupBy({
+        by: ["userId"],
+        where: {
+          checkInAt: { gte: weekStart },
+          durationMinutes: { not: null },
+        },
+        _sum: { durationMinutes: true },
+      }),
+    ]);
 
-        return {
-          ...emp,
-          hoursThisWeek: weekEntries._sum.durationMinutes || 0,
-        };
-      })
-    );
+    const weekMap = new Map<string, number>();
+    for (const agg of weekAggregates) {
+      weekMap.set(agg.userId, agg._sum.durationMinutes || 0);
+    }
+
+    const employeesWithStats = employees.map((emp) => ({
+      ...emp,
+      hoursThisWeek: weekMap.get(emp.id) || 0,
+    }));
 
     return apiSuccess(employeesWithStats);
   } catch (error) {
@@ -105,7 +107,7 @@ export async function POST(request: NextRequest) {
         name: parsed.name,
         email: parsed.email,
         passwordHash,
-        role: "EMPLOYEE",
+        role: parsed.role || "EMPLOYEE",
         teamId: parsed.teamId || null,
         isActive: parsed.isActive ?? true,
         avatarUrl: parsed.avatarUrl,

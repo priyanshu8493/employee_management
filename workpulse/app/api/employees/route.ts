@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
         avatarUrl: parsed.avatarUrl,
         phone: parsed.phone,
         designation: parsed.designation,
-        joinedAt: parsed.joinedAt ? new Date(parsed.joinedAt) : new Date(),
+        joinedAt: parsed.joinedAt ? new Date(parsed.joinedAt) : undefined,
       },
       select: {
         id: true,

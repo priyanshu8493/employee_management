@@ -401,7 +401,7 @@ export default function EmployeesPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-foreground">Joining Date</Label>
+              <Label className="text-foreground">Joining Date *</Label>
               <Input
                 type="date"
                 value={form.joinedAt}
@@ -412,7 +412,7 @@ export default function EmployeesPage() {
             <Button
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={() => createMutation.mutate()}
-              disabled={!form.name || !form.email || createMutation.isPending}
+              disabled={!form.name || !form.email || !form.joinedAt || createMutation.isPending}
             >
               {createMutation.isPending ? "Creating..." : "Create Employee"}
             </Button>

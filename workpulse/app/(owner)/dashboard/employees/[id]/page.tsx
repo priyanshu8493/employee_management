@@ -278,6 +278,15 @@ export default function EmployeeDetailPage() {
               <Input defaultValue={employee.phone || ""} id="edit-phone" className="bg-surface border-border text-foreground" />
             </div>
             <div className="space-y-2">
+              <Label className="text-foreground">Joining Date</Label>
+              <Input
+                type="date"
+                defaultValue={employee.joinedAt ? new Date(employee.joinedAt).toISOString().split("T")[0] : ""}
+                id="edit-joinedAt"
+                className="bg-surface border-border text-foreground"
+              />
+            </div>
+            <div className="space-y-2">
               <Label className="text-foreground">Team</Label>
               <Select defaultValue={employee.teamId || ""} onValueChange={(v) => {
                 const el = document.getElementById("edit-teamId") as HTMLInputElement;
@@ -306,7 +315,8 @@ export default function EmployeeDetailPage() {
                 const designation = (document.getElementById("edit-designation") as HTMLInputElement)?.value;
                 const phone = (document.getElementById("edit-phone") as HTMLInputElement)?.value;
                 const teamId = (document.getElementById("edit-teamId") as HTMLInputElement)?.value;
-                if (name) updateMutation.mutate({ name, email: email || undefined, designation, phone, teamId: teamId || null });
+                const joinedAt = (document.getElementById("edit-joinedAt") as HTMLInputElement)?.value;
+                if (name) updateMutation.mutate({ name, email: email || undefined, designation, phone, teamId: teamId || null, joinedAt: joinedAt || null });
               }}
             >
               Save

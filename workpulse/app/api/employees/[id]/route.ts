@@ -136,7 +136,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (parsed.isActive === true) data.leftAt = null;
       if (parsed.isActive === false) data.leftAt = new Date();
     }
-    if (parsed.joinedAt !== undefined && isOwner) data.joinedAt = parsed.joinedAt ? new Date(parsed.joinedAt) : new Date();
+    if (parsed.joinedAt !== undefined && isOwner) data.joinedAt = parsed.joinedAt ? new Date(parsed.joinedAt) : null;
     if (parsed.leftAt !== undefined && isOwner) data.leftAt = parsed.leftAt ? new Date(parsed.leftAt) : null;
     if (parsed.avatarUrl !== undefined) data.avatarUrl = parsed.avatarUrl;
     if (parsed.phone !== undefined) data.phone = parsed.phone;

@@ -406,6 +406,25 @@ export default function ProjectDetailPage() {
               {project.endDate && <span>End: {formatDate(project.endDate)}</span>}
               <span>Est: {project.estimatedHours}h</span>
             </div>
+            {(() => {
+              const teamLeaders = (project.projectTeams || [])
+                .flatMap((pt: any) => pt.team?.teamLeads || [])
+                .map((tl: any) => tl.user)
+                .filter((u: any) => u);
+              if (teamLeaders.length === 0) return null;
+              return (
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs text-muted-foreground">Team Lead{teamLeaders.length > 1 ? "s" : ""}:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {teamLeaders.map((tl: any) => (
+                      <span key={tl.id} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                        {tl.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
           <div className="flex gap-2">
             <Select

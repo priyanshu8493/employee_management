@@ -17,7 +17,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         projectTeams: {
           include: {
             team: {
-              select: { id: true, name: true, members: { select: { id: true, name: true, avatarUrl: true } } },
+              select: {
+                id: true,
+                name: true,
+                members: { select: { id: true, name: true, avatarUrl: true } },
+                teamLeads: {
+                  select: {
+                    user: { select: { id: true, name: true, avatarUrl: true } },
+                  },
+                },
+              },
             },
           },
         },

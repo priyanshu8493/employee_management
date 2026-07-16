@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Play, Square, AlertTriangle, Plus, Trash2, Clock, BarChart3 } from "lucide-react";
+import { Play, Square, AlertTriangle, Plus, Trash2, Clock, BarChart3, CheckCircle2, Circle, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -118,6 +118,16 @@ export default function EmployeeHomePage() {
       return data || [];
     },
     enabled: isTeamLeader,
+    staleTime: 30000,
+  });
+
+  const { data: myTasks } = useQuery({
+    queryKey: ["my-tasks"],
+    queryFn: async () => {
+      const res = await fetch("/api/my-tasks");
+      const { data } = await res.json();
+      return data || [];
+    },
     staleTime: 30000,
   });
 
@@ -272,6 +282,74 @@ export default function EmployeeHomePage() {
           </div>
         </div>
       </div>
+
+      {myTasks && myTasks.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <CheckCircle2 className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">My Assigned Tasks</h2>
+            <Badge variant="secondary" className="text-xs bg-primary/10 text-primary border-0">
+              {myTasks.length}
+            </Badge>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {myTasks.map((task: any) => (
+              <Card
+                key={task.id}
+                className="border border-border p-4 rounded-xl hover:border-primary/40 transition-all cursor-pointer group"
+                onClick={() => {
+                  if (!activeSession) {
+                    setCheckinProject(task.project);
+                    setCheckinSubTask(task.id);
+                    setCheckinNotes("");
+                  }
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0"
+                    style={{ backgroundColor: task.project?.color }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{task.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                      {task.project?.name}
+                    </p>
+                  </div>
+                  <div className="shrink-0">
+                    {task.status === "DONE" ? (
+                      <CheckCircle2 className="h-4 w-4 text-success" />
+                    ) : task.status === "IN_PROGRESS" ? (
+                      <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                    ) : (
+                      <Circle className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border">
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] ${
+                      task.status === "DONE"
+                        ? "border-success text-success"
+                        : task.status === "IN_PROGRESS"
+                        ? "border-primary text-primary"
+                        : "border-border text-muted-foreground"
+                    }`}
+                  >
+                    {task.status?.replace("_", " ")}
+                  </Badge>
+                  {task.estimatedHours && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {task.estimatedHours}h est.
+                    </span>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loadingActive ? (
         <div className="h-32 bg-surface-raised rounded-xl animate-pulse" />

@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, UserCheck, UserX, AlertTriangle, Trash2 } from "lucide-react";
+import { ArrowLeft, UserCheck, UserX, AlertTriangle, Trash2, CalendarDays } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -81,6 +81,18 @@ export default function EmployeeDetailPage() {
       return data || [];
     },
     staleTime: 60000,
+  });
+
+  const [leaveYear, setLeaveYear] = useState(new Date().getFullYear());
+
+  const { data: leaveStats } = useQuery({
+    queryKey: ["employee-leave-stats", id, leaveYear],
+    queryFn: async () => {
+      const res = await fetch(`/api/leaves/stats?userId=${id}&year=${leaveYear}`);
+      const { data } = await res.json();
+      return data;
+    },
+    staleTime: 30000,
   });
 
   const deleteMutation = useMutation({
@@ -315,6 +327,9 @@ export default function EmployeeDetailPage() {
               </span>
             )}
           </TabsTrigger>
+          <TabsTrigger value="leaves" className="data-[state=active]:bg-surface-raised">
+            <CalendarDays className="h-3.5 w-3.5 mr-1.5" /> Leaves
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 pt-6">
@@ -394,6 +409,93 @@ export default function EmployeeDetailPage() {
             <div className="text-center py-12 text-muted-foreground">
               <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-40" />
               <p>No QC flags for this employee</p>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="leaves" className="pt-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-foreground">Leave History</h3>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-border text-foreground"
+                onClick={() => setLeaveYear((y) => y - 1)}
+              >
+                &larr;
+              </Button>
+              <span className="text-sm font-medium text-foreground min-w-[60px] text-center">{leaveYear}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-border text-foreground"
+                onClick={() => setLeaveYear((y) => y + 1)}
+                disabled={leaveYear >= new Date().getFullYear()}
+              >
+                &rarr;
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-4 rounded-lg bg-surface-raised text-center">
+              <p className="text-2xl font-bold text-foreground">{leaveStats?.totalLeaves || 0}</p>
+              <p className="text-xs text-muted-foreground">Total Leaves ({leaveYear})</p>
+            </div>
+            <div className="p-4 rounded-lg bg-surface-raised text-center">
+              <p className="text-2xl font-bold text-foreground">{leaveStats?.monthlyBreakdown?.[new Date().getMonth()]?.count || 0}</p>
+              <p className="text-xs text-muted-foreground">This Month</p>
+            </div>
+            <div className="p-4 rounded-lg bg-surface-raised text-center">
+              <p className="text-2xl font-bold text-foreground">
+                {leaveStats?.monthlyBreakdown
+                  ?.slice(0, new Date().getMonth() + 1)
+                  .reduce((sum: number, m: any) => sum + m.count, 0) || 0}
+              </p>
+              <p className="text-xs text-muted-foreground">Year to Date</p>
+            </div>
+          </div>
+
+          <Card className="border border-border p-5 rounded-xl">
+            <h3 className="text-sm font-medium text-foreground mb-4">Monthly Breakdown ({leaveYear})</h3>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={leaveStats?.monthlyBreakdown || []}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2E3147" />
+                  <XAxis dataKey="month" stroke="#94A3B8" fontSize={11} />
+                  <YAxis stroke="#94A3B8" fontSize={11} allowDecimals={false} />
+                  <Tooltip contentStyle={{ background: "#232640", border: "1px solid #2E3147", borderRadius: "8px", color: "#F1F5F9" }} />
+                  <Bar dataKey="count" fill="#F59E0B" radius={[4, 4, 0, 0]} name="Leaves" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          {leaveStats?.leaves && leaveStats.leaves.length > 0 ? (
+            <Card className="border border-border rounded-xl overflow-hidden">
+              <div className="divide-y divide-border">
+                {leaveStats.leaves.map((leave: any) => (
+                  <div key={leave.id} className="flex items-center justify-between p-4 hover:bg-surface-raised/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <CalendarDays className="h-4 w-4 text-warning shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          {new Date(leave.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                        </p>
+                        {leave.reason && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{leave.reason}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <CalendarDays className="h-8 w-8 mx-auto mb-2 opacity-40" />
+              <p>No leaves recorded for {leaveYear}</p>
             </div>
           )}
         </TabsContent>

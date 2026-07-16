@@ -162,27 +162,22 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     const existing = await prisma.user.findUnique({
       where: { id },
-      select: { id: true, email: true },
+      select: { id: true, email: true, role: true, isActive: true },
     });
     if (!existing) return apiError("Employee not found", "NOT_FOUND", 404);
+    if (existing.role === "OWNER") return apiError("Cannot deactivate owner", "FORBIDDEN", 403);
+    if (!existing.isActive) return apiError("Employee already inactive", "BAD_REQUEST", 400);
 
-    // Null out time entries to preserve work data
-    await prisma.$executeRaw`UPDATE "time_entries" SET "userId" = NULL WHERE "userId" = ${id}`;
-    // Delete leaves (absence records, not work contribution)
-    await prisma.leave.deleteMany({ where: { userId: id } });
-    // Delete QC data (admin records)
-    await prisma.qcReport.deleteMany({ where: { teamLeadId: id } });
-    await prisma.qcMistake.deleteMany({ where: { employeeId: id } });
-    // Delete link records
-    await prisma.subTaskAssignment.deleteMany({ where: { userId: id } });
-    await prisma.teamLead.deleteMany({ where: { userId: id } });
-    // Delete auth records
-    await prisma.account.deleteMany({ where: { userId: id } });
+    // Deactivate — blocks login but preserves all work data
+    await prisma.user.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    // Clear any active sessions
     await prisma.session.deleteMany({ where: { userId: id } });
-    // Delete the user
-    await prisma.user.delete({ where: { id } });
 
-    return apiSuccess({ deleted: true, message: "Employee deleted. Time entries preserved." });
+    return apiSuccess({ deactivated: true, message: "Employee deactivated. Work data preserved." });
   } catch (error) {
     return handleApiError(error);
   }

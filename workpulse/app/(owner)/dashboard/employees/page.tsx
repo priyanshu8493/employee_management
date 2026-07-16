@@ -4,13 +4,11 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DataTable } from "@/components/shared/DataTable";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { EmptyState } from "@/components/shared/EmptyState";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Select,
@@ -25,26 +23,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Copy, Check, Trash2 } from "lucide-react";
+import { Plus, Copy, Check, Trash2, UserCheck, Users } from "lucide-react";
 import { formatDurationShort } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+
+type Tab = "active" | "past";
 
 export default function EmployeesPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [tab, setTab] = useState<Tab>("active");
   const [showCreate, setShowCreate] = useState(false);
   const [teamFilter, setTeamFilter] = useState("ALL");
-  const [activeFilter, setActiveFilter] = useState("ALL");
   const [form, setForm] = useState({ name: "", email: "", teamId: "", designation: "" });
   const [createdPassword, setCreatedPassword] = useState("");
   const [copied, setCopied] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [actionId, setActionId] = useState<string | null>(null);
 
   const { data: employees, isLoading } = useQuery({
-    queryKey: ["employees", teamFilter, activeFilter],
+    queryKey: ["employees", teamFilter, tab],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (teamFilter !== "ALL") params.set("teamId", teamFilter);
-      if (activeFilter !== "ALL") params.set("isActive", activeFilter);
+      params.set("isActive", tab === "active" ? "true" : "false");
       const res = await fetch(`/api/employees?${params}`);
       const { data } = await res.json();
       return data || [];
@@ -82,7 +83,7 @@ export default function EmployeesPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const deleteMutation = useMutation({
+  const deactivateMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/employees/${id}`, { method: "DELETE" });
       const { data, error } = await res.json();
@@ -91,13 +92,32 @@ export default function EmployeesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
-      toast.success("Employee deleted");
-      setDeleteId(null);
+      toast.success("Employee deactivated. Work data preserved.");
+      setActionId(null);
     },
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const columns = [
+  const reactivateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/employees/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: true }),
+      });
+      const { data, error } = await res.json();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      toast.success("Employee reactivated");
+      setActionId(null);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const activeColumns = [
     {
       key: "sno",
       header: "#",
@@ -136,19 +156,6 @@ export default function EmployeesPage() {
       render: (emp: any) => <span className="text-muted-foreground">{emp.team?.name || "--"}</span>,
     },
     {
-      key: "isActive",
-      header: "Status",
-      sortable: true,
-      render: (emp: any) => (
-        <div className="flex items-center gap-1.5">
-          <div className={`w-2 h-2 rounded-full ${emp.isActive ? "bg-success" : "bg-muted-foreground"}`} />
-          <span className={emp.isActive ? "text-success" : "text-muted-foreground"}>
-            {emp.isActive ? "Active" : "Inactive"}
-          </span>
-        </div>
-      ),
-    },
-    {
       key: "hoursThisWeek",
       header: "Hours This Week",
       sortable: true,
@@ -169,16 +176,76 @@ export default function EmployeesPage() {
       key: "actions",
       header: "",
       render: (emp: any) => (
-        <div className="flex gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-danger"
-            onClick={(e) => { e.stopPropagation(); setDeleteId(emp.id); }}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground hover:text-danger"
+          onClick={(e) => { e.stopPropagation(); setActionId(emp.id); }}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      ),
+    },
+  ];
+
+  const pastColumns = [
+    {
+      key: "sno",
+      header: "#",
+      render: (_emp: any, index: number) => (
+        <span className="text-muted-foreground font-mono text-sm">{index}</span>
+      ),
+    },
+    {
+      key: "name",
+      header: "Employee",
+      sortable: true,
+      render: (emp: any) => (
+        <div className="flex items-center gap-3">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback className="bg-muted text-muted-foreground text-xs">
+              {emp.name?.split(" ").map((n: string) => n[0]).join("")}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="font-medium">{emp.name}</p>
+            <p className="text-xs text-muted-foreground">{emp.email}</p>
+          </div>
         </div>
+      ),
+    },
+    {
+      key: "designation",
+      header: "Designation",
+      sortable: true,
+      render: (emp: any) => <span className="text-muted-foreground">{emp.designation || "--"}</span>,
+    },
+    {
+      key: "team",
+      header: "Team",
+      sortable: true,
+      render: (emp: any) => <span className="text-muted-foreground">{emp.team?.name || "--"}</span>,
+    },
+    {
+      key: "hoursThisWeek",
+      header: "Total Hours Logged",
+      sortable: true,
+      render: (emp: any) => (
+        <span className="font-medium">{formatDurationShort(emp.hoursThisWeek)}</span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "",
+      render: (emp: any) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground hover:text-success"
+          onClick={(e) => { e.stopPropagation(); setActionId(emp.id); }}
+        >
+          <UserCheck className="h-3.5 w-3.5" />
+        </Button>
       ),
     },
   ];
@@ -195,7 +262,9 @@ export default function EmployeesPage() {
               </span>
             )}
           </div>
-          <p className="text-muted-foreground mt-1">Manage your workforce</p>
+          <p className="text-muted-foreground mt-1">
+            {tab === "active" ? "Manage your workforce" : "Previously employed team members"}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <Select value={teamFilter} onValueChange={(v) => v && setTeamFilter(v)}>
@@ -209,33 +278,52 @@ export default function EmployeesPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={activeFilter} onValueChange={(v) => v && setActiveFilter(v)}>
-            <SelectTrigger className="w-36 bg-surface border-border text-foreground">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-surface-raised border-border">
-              <SelectItem value="ALL">All Status</SelectItem>
-              <SelectItem value="true">Active</SelectItem>
-              <SelectItem value="false">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-            onClick={() => setShowCreate(true)}
-          >
-            <Plus className="h-4 w-4 mr-2" /> Add Employee
-          </Button>
+          {tab === "active" && (
+            <Button
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              onClick={() => setShowCreate(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" /> Add Employee
+            </Button>
+          )}
         </div>
       </div>
 
+      <div className="flex gap-1 p-1 bg-surface rounded-lg w-fit border border-border">
+        <button
+          onClick={() => { setTab("active"); setTeamFilter("ALL"); }}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors",
+            tab === "active"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Users className="h-4 w-4" />
+          Active
+        </button>
+        <button
+          onClick={() => { setTab("past"); setTeamFilter("ALL"); }}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors",
+            tab === "past"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <UserCheck className="h-4 w-4" />
+          Past Employees
+        </button>
+      </div>
+
       <DataTable
-        columns={columns}
+        columns={tab === "active" ? activeColumns : pastColumns}
         data={employees || []}
         loading={isLoading}
         searchable
         searchPlaceholder="Search by name or email..."
         onRowClick={(emp: any) => router.push(`/dashboard/employees/${emp.id}`)}
-        emptyMessage="No employees found"
+        emptyMessage={tab === "active" ? "No active employees" : "No past employees"}
       />
 
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
@@ -328,13 +416,22 @@ export default function EmployeesPage() {
       </Dialog>
 
       <ConfirmDialog
-        open={!!deleteId}
-        onOpenChange={() => setDeleteId(null)}
-        title="Delete Employee"
-        description="Are you sure? This will permanently delete this employee. If they have existing records, they will be deactivated instead."
-        confirmLabel="Delete"
-        variant="destructive"
-        onConfirm={() => deleteId && deleteMutation.mutate(deleteId)}
+        open={!!actionId}
+        onOpenChange={() => setActionId(null)}
+        title={tab === "active" ? "Deactivate Employee" : "Reactivate Employee"}
+        description={
+          tab === "active"
+            ? "This employee will no longer be able to log in. All their work data (time entries, reports) will be preserved in the system."
+            : "This will restore the employee's login access. They will be able to log in again."
+        }
+        confirmLabel={tab === "active" ? "Deactivate" : "Reactivate"}
+        variant={tab === "active" ? "destructive" : "default"}
+        onConfirm={() => {
+          if (!actionId) return;
+          tab === "active"
+            ? deactivateMutation.mutate(actionId)
+            : reactivateMutation.mutate(actionId);
+        }}
       />
     </div>
   );

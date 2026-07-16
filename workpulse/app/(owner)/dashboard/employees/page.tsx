@@ -99,6 +99,13 @@ export default function EmployeesPage() {
 
   const columns = [
     {
+      key: "sno",
+      header: "#",
+      render: (_emp: any, index: number) => (
+        <span className="text-muted-foreground font-mono text-sm">{index}</span>
+      ),
+    },
+    {
       key: "name",
       header: "Employee",
       sortable: true,
@@ -180,7 +187,14 @@ export default function EmployeesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Employees</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground">Employees</h1>
+            {employees && (
+              <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-sm font-semibold">
+                {employees.length}
+              </span>
+            )}
+          </div>
           <p className="text-muted-foreground mt-1">Manage your workforce</p>
         </div>
         <div className="flex items-center gap-3">

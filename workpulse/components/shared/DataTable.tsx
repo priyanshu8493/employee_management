@@ -25,7 +25,7 @@ export interface Column<T> {
   key: string;
   header: string;
   sortable?: boolean;
-  render: (item: T) => React.ReactNode;
+  render: (item: T, index: number) => React.ReactNode;
 }
 
 interface DataTableProps<T> {
@@ -157,7 +157,7 @@ export function DataTable<T extends Record<string, unknown>>({
                 >
                   {columns.map((col) => (
                     <TableCell key={col.key} className="text-foreground">
-                      {col.render(item)}
+                      {col.render(item, page * rowsPerPage + i + 1)}
                     </TableCell>
                   ))}
                 </TableRow>

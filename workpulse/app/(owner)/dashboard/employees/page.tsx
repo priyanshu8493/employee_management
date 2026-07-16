@@ -24,7 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Plus, Copy, Check, Trash2, UserCheck, Users } from "lucide-react";
-import { formatDurationShort } from "@/lib/utils";
+import { formatDurationShort, formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 type Tab = "active" | "past";
@@ -35,7 +35,7 @@ export default function EmployeesPage() {
   const [tab, setTab] = useState<Tab>("active");
   const [showCreate, setShowCreate] = useState(false);
   const [teamFilter, setTeamFilter] = useState("ALL");
-  const [form, setForm] = useState({ name: "", email: "", teamId: "", designation: "" });
+  const [form, setForm] = useState({ name: "", email: "", teamId: "", designation: "", joinedAt: "" });
   const [createdPassword, setCreatedPassword] = useState("");
   const [copied, setCopied] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
@@ -78,7 +78,7 @@ export default function EmployeesPage() {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       setCreatedPassword(data.tempPassword);
       toast.success("Employee created");
-      setForm({ name: "", email: "", teamId: "", designation: "" });
+      setForm({ name: "", email: "", teamId: "", designation: "", joinedAt: "" });
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -164,6 +164,14 @@ export default function EmployeesPage() {
       ),
     },
     {
+      key: "joinedAt",
+      header: "Joined",
+      sortable: true,
+      render: (emp: any) => (
+        <span className="text-muted-foreground text-sm">{emp.joinedAt ? formatDate(emp.joinedAt) : "--"}</span>
+      ),
+    },
+    {
       key: "activeEntry",
       header: "Currently Working",
       render: (emp: any) => (
@@ -232,6 +240,22 @@ export default function EmployeesPage() {
       sortable: true,
       render: (emp: any) => (
         <span className="font-medium">{formatDurationShort(emp.hoursThisWeek)}</span>
+      ),
+    },
+    {
+      key: "joinedAt",
+      header: "Joined",
+      sortable: true,
+      render: (emp: any) => (
+        <span className="text-muted-foreground text-sm">{emp.joinedAt ? formatDate(emp.joinedAt) : "--"}</span>
+      ),
+    },
+    {
+      key: "leftAt",
+      header: "Left On",
+      sortable: true,
+      render: (emp: any) => (
+        <span className="text-muted-foreground text-sm">{emp.leftAt ? formatDate(emp.leftAt) : "--"}</span>
       ),
     },
     {
@@ -375,6 +399,15 @@ export default function EmployeesPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-foreground">Joining Date</Label>
+              <Input
+                type="date"
+                value={form.joinedAt}
+                onChange={(e) => setForm((p) => ({ ...p, joinedAt: e.target.value }))}
+                className="bg-surface border-border text-foreground"
+              />
             </div>
             <Button
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"

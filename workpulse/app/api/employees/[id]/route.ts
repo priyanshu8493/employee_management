@@ -32,6 +32,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           phone: true,
           designation: true,
           isActive: true,
+          joinedAt: true,
+          leftAt: true,
           role: true,
           teamId: true,
           team: { select: { id: true, name: true } },
@@ -128,7 +130,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (parsed.name !== undefined) data.name = parsed.name;
     if (parsed.email !== undefined && isOwner) data.email = parsed.email;
     if (parsed.teamId !== undefined && isOwner) data.teamId = parsed.teamId;
-    if (parsed.isActive !== undefined && isOwner) data.isActive = parsed.isActive;
+    if (parsed.isActive !== undefined && isOwner) {
+      data.isActive = parsed.isActive;
+      // Auto-manage separation date
+      if (parsed.isActive === true) data.leftAt = null;
+      if (parsed.isActive === false) data.leftAt = new Date();
+    }
+    if (parsed.joinedAt !== undefined && isOwner) data.joinedAt = parsed.joinedAt ? new Date(parsed.joinedAt) : new Date();
+    if (parsed.leftAt !== undefined && isOwner) data.leftAt = parsed.leftAt ? new Date(parsed.leftAt) : null;
     if (parsed.avatarUrl !== undefined) data.avatarUrl = parsed.avatarUrl;
     if (parsed.phone !== undefined) data.phone = parsed.phone;
     if (parsed.designation !== undefined) data.designation = parsed.designation;
@@ -143,6 +152,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       select: {
         id: true, email: true, name: true, role: true, teamId: true,
         isActive: true, avatarUrl: true, phone: true, designation: true,
+        joinedAt: true, leftAt: true,
       },
     });
 
@@ -171,7 +181,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     // Deactivate — blocks login but preserves all work data
     await prisma.user.update({
       where: { id },
-      data: { isActive: false },
+      data: { isActive: false, leftAt: new Date() },
     });
 
     // Clear any active sessions

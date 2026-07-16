@@ -56,6 +56,8 @@ export async function GET(request: NextRequest) {
           phone: true,
           designation: true,
           isActive: true,
+          joinedAt: true,
+          leftAt: true,
           teamId: true,
           team: { select: { id: true, name: true } },
           createdAt: true,
@@ -117,6 +119,7 @@ export async function POST(request: NextRequest) {
         avatarUrl: parsed.avatarUrl,
         phone: parsed.phone,
         designation: parsed.designation,
+        joinedAt: parsed.joinedAt ? new Date(parsed.joinedAt) : new Date(),
       },
       select: {
         id: true,
@@ -128,6 +131,7 @@ export async function POST(request: NextRequest) {
         avatarUrl: true,
         phone: true,
         designation: true,
+        joinedAt: true,
       },
     });
 

@@ -36,6 +36,8 @@ export const employeeSchema = z.object({
   avatarUrl: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   designation: z.string().optional().nullable(),
+  joinedAt: z.string().optional(),
+  leftAt: z.string().optional().nullable(),
 });
 
 export const teamSchema = z.object({

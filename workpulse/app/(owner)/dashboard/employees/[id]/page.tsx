@@ -193,6 +193,14 @@ export default function EmployeeDetailPage() {
                   </span>
                 </div>
               </div>
+              <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                {employee.joinedAt && (
+                  <span>Joined: <span className="text-foreground">{formatDate(employee.joinedAt)}</span></span>
+                )}
+                {employee.leftAt && (
+                  <span>Left: <span className="text-foreground">{formatDate(employee.leftAt)}</span></span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex gap-2">

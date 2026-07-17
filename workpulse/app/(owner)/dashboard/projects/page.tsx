@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, LayoutGrid, List, Archive, Edit3, Trash2, Users } from "lucide-react";
+import { Plus, LayoutGrid, List, Archive, Edit3, Trash2, Users, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 
@@ -79,7 +79,24 @@ export default function ProjectsPage() {
   });
 
   const projects = projectsData?.projects || [];
-  const clientNames = projectsData?.clientNames || [];
+
+  const { data: allClientNames = [] } = useQuery({
+    queryKey: ["project-client-names"],
+    queryFn: async () => {
+      const res = await fetch("/api/projects");
+      const { data } = await res.json();
+      return data?.clientNames || [];
+    },
+    staleTime: 60000,
+  });
+
+  const clientNames = allClientNames;
+
+  useEffect(() => {
+    if (clientFilter !== "ALL" && clientNames.length > 0 && !clientNames.includes(clientFilter)) {
+      setClientFilter("ALL");
+    }
+  }, [clientNames, clientFilter]);
 
   const { data: employees } = useQuery({
     queryKey: ["employees-all"],
@@ -104,6 +121,7 @@ export default function ProjectsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["project-client-names"] });
       toast.success("Project created");
       setShowCreate(false);
       setForm({ name: "", description: "", clientName: "", color: "#6C63FF", estimatedHours: 0, startDate: "", endDate: "", leaderIds: [] });
@@ -120,6 +138,7 @@ export default function ProjectsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["project-client-names"] });
       toast.success("Project archived");
       setArchiveId(null);
     },
@@ -139,6 +158,7 @@ export default function ProjectsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["project-client-names"] });
       toast.success("Project updated");
       setEditProject(null);
     },
@@ -154,6 +174,7 @@ export default function ProjectsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["project-client-names"] });
       toast.success("Project deleted");
       setDeleteId(null);
     },
@@ -301,6 +322,17 @@ export default function ProjectsPage() {
               ))}
             </SelectContent>
           </Select>
+          {(statusFilter !== "ALL" || clientFilter !== "ALL") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground h-9 px-2"
+              onClick={() => { setStatusFilter("ALL"); setClientFilter("ALL"); }}
+            >
+              <X className="h-3.5 w-3.5 mr-1" />
+              Clear
+            </Button>
+          )}
           <div className="flex border border-border rounded-lg overflow-hidden">
             <button
               onClick={() => setView("grid")}

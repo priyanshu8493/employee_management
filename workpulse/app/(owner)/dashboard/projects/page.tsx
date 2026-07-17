@@ -300,25 +300,25 @@ export default function ProjectsPage() {
         </div>
         <div className="flex items-center gap-3">
           <Select value={statusFilter} onValueChange={(v) => v && setStatusFilter(v)}>
-            <SelectTrigger className="w-36 bg-surface border-border text-foreground">
+            <SelectTrigger className="w-48 bg-surface border-border text-foreground">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-surface-raised border-border">
-              <SelectItem value="ALL">All Status</SelectItem>
-              <SelectItem value="ACTIVE">Active</SelectItem>
-              <SelectItem value="ON_HOLD">On Hold</SelectItem>
-              <SelectItem value="COMPLETED">Completed</SelectItem>
-              <SelectItem value="ARCHIVED">Archived</SelectItem>
+              <SelectItem value="ALL">Status: All</SelectItem>
+              <SelectItem value="ACTIVE">Status: Active</SelectItem>
+              <SelectItem value="ON_HOLD">Status: On Hold</SelectItem>
+              <SelectItem value="COMPLETED">Status: Completed</SelectItem>
+              <SelectItem value="ARCHIVED">Status: Archived</SelectItem>
             </SelectContent>
           </Select>
           <Select value={clientFilter} onValueChange={(v) => v && setClientFilter(v)}>
-            <SelectTrigger className="w-40 bg-surface border-border text-foreground">
-              <SelectValue placeholder="All Clients" />
+            <SelectTrigger className="w-52 bg-surface border-border text-foreground">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-surface-raised border-border">
-              <SelectItem value="ALL">All Clients</SelectItem>
+              <SelectItem value="ALL">Client: All</SelectItem>
               {clientNames.map((name: string) => (
-                <SelectItem key={name} value={name}>{name}</SelectItem>
+                <SelectItem key={name} value={name}>Client: {name}</SelectItem>
               ))}
             </SelectContent>
           </Select>

@@ -142,16 +142,12 @@ function SelectItem({
   const labelMap = React.useContext(SelectLabelContext);
   const value = (props as Record<string, unknown>).value;
 
-  React.useEffect(() => {
-    if (value != null && children != null) {
-      const text = typeof children === "string" ? children :
-                   typeof children === "number" ? String(children) :
-                   "";
-      if (text) {
-        labelMap.set(String(value), text);
-      }
-    }
-  }, [value, children, labelMap]);
+  const text = typeof children === "string" ? children :
+               typeof children === "number" ? String(children) :
+               "";
+  if (value != null && text) {
+    labelMap.set(String(value), text);
+  }
 
   return (
     <SelectPrimitive.Item

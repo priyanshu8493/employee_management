@@ -12,20 +12,12 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
-    const teamId = searchParams.get("teamId");
     const search = searchParams.get("search");
 
     const where: Record<string, unknown> = {};
 
     if (session.user.role !== "OWNER") {
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { teamId: true },
-      });
-      if (!user?.teamId) return apiSuccess([]);
-      where.projectTeams = { some: { teamId: user.teamId } };
-    } else if (teamId) {
-      where.projectTeams = { some: { teamId } };
+      where.projectLeaders = { some: { userId: session.user.id } };
     }
 
     if (status) where.status = status;
@@ -44,8 +36,8 @@ export async function GET(request: NextRequest) {
           estimatedHours: true,
           updatedAt: true,
           _count: { select: { subTasks: true, timeEntries: true } },
-          projectTeams: {
-            select: { team: { select: { id: true, name: true } } },
+          projectLeaders: {
+            select: { user: { select: { id: true, name: true, avatarUrl: true, role: true } } },
           },
         },
         orderBy: { updatedAt: "desc" },
@@ -88,15 +80,15 @@ export async function POST(request: NextRequest) {
         estimatedHours: parsed.estimatedHours,
         startDate: parsed.startDate ? new Date(parsed.startDate) : new Date(),
         endDate: parsed.endDate ? new Date(parsed.endDate) : null,
-        projectTeams: parsed.teamIds?.length
+        projectLeaders: parsed.leaderIds?.length
           ? {
-              create: parsed.teamIds.map((teamId) => ({ teamId })),
+              create: parsed.leaderIds.map((userId) => ({ userId })),
             }
           : undefined,
       },
       include: {
-        projectTeams: {
-          include: { team: { select: { id: true, name: true } } },
+        projectLeaders: {
+          include: { user: { select: { id: true, name: true, avatarUrl: true, role: true } } },
         },
       },
     });

@@ -112,8 +112,7 @@ export default function EmployeeHomePage() {
   const { data: teamMembers } = useQuery({
     queryKey: ["team-members"],
     queryFn: async () => {
-      if (!session?.user?.teamId) return [];
-      const res = await fetch(`/api/employees?teamId=${session.user.teamId}`);
+      const res = await fetch("/api/employees");
       const { data } = await res.json();
       return data || [];
     },
@@ -146,10 +145,7 @@ export default function EmployeeHomePage() {
     (p: any) => p.status === "ACTIVE"
   );
 
-  const availableProjects = activeProjects.filter((p: any) => {
-    if (!session?.user?.teamId) return false;
-    return p.projectTeams?.some((pt: any) => pt.teamId === session.user.teamId);
-  });
+  const availableProjects = activeProjects;
 
   const filteredSubtasks = (subtasks || []).filter(
     (s: any) => s.status === "TODO" || s.status === "IN_PROGRESS"

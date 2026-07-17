@@ -28,7 +28,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       data: { remarks: remarks || null },
       include: {
         user: {
-          select: { id: true, name: true, email: true, avatarUrl: true, team: { select: { id: true, name: true } } },
+          select: { id: true, name: true, email: true, avatarUrl: true },
         },
       },
     });

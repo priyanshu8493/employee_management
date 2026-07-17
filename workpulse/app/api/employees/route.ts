@@ -16,20 +16,10 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const teamId = searchParams.get("teamId");
     const isActive = searchParams.get("isActive");
     const search = searchParams.get("search");
 
     const where: Record<string, unknown> = { role: { in: ["EMPLOYEE", "TEAM_LEADER"] } };
-    if (teamId) {
-      where.teamId = teamId;
-    } else if (session.user.role === "TEAM_LEADER") {
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { teamId: true },
-      });
-      if (user?.teamId) where.teamId = user.teamId;
-    }
     if (isActive !== null) where.isActive = isActive === "true";
     if (search) {
       where.OR = [
@@ -58,8 +48,6 @@ export async function GET(request: NextRequest) {
           isActive: true,
           joinedAt: true,
           leftAt: true,
-          teamId: true,
-          team: { select: { id: true, name: true } },
           createdAt: true,
           timeEntries: {
             where: { checkOutAt: null },
@@ -114,7 +102,6 @@ export async function POST(request: NextRequest) {
         email: parsed.email,
         passwordHash,
         role: parsed.role || "EMPLOYEE",
-        teamId: parsed.teamId || null,
         isActive: parsed.isActive ?? true,
         avatarUrl: parsed.avatarUrl,
         phone: parsed.phone,
@@ -126,7 +113,6 @@ export async function POST(request: NextRequest) {
         email: true,
         name: true,
         role: true,
-        teamId: true,
         isActive: true,
         avatarUrl: true,
         phone: true,

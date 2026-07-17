@@ -35,8 +35,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           joinedAt: true,
           leftAt: true,
           role: true,
-          teamId: true,
-          team: { select: { id: true, name: true } },
           createdAt: true,
         },
       }),
@@ -110,9 +108,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (emailExists) return apiError("Email already in use", "DUPLICATE_EMAIL", 409);
     }
 
-    if (parsed.teamId !== undefined && !isOwner) {
-      return apiError("Only owners can change team", "FORBIDDEN", 403);
-    }
     if (parsed.isActive !== undefined && !isOwner) {
       return apiError("Only owners can change status", "FORBIDDEN", 403);
     }
@@ -129,10 +124,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const data: Record<string, unknown> = {};
     if (parsed.name !== undefined) data.name = parsed.name;
     if (parsed.email !== undefined && isOwner) data.email = parsed.email;
-    if (parsed.teamId !== undefined && isOwner) data.teamId = parsed.teamId;
     if (parsed.isActive !== undefined && isOwner) {
       data.isActive = parsed.isActive;
-      // Auto-manage separation date
       if (parsed.isActive === true) data.leftAt = null;
       if (parsed.isActive === false) data.leftAt = new Date();
     }
@@ -150,7 +143,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       where: { id },
       data,
       select: {
-        id: true, email: true, name: true, role: true, teamId: true,
+        id: true, email: true, name: true, role: true,
         isActive: true, avatarUrl: true, phone: true, designation: true,
         joinedAt: true, leftAt: true,
       },
@@ -178,13 +171,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     if (existing.role === "OWNER") return apiError("Cannot deactivate owner", "FORBIDDEN", 403);
     if (!existing.isActive) return apiError("Employee already inactive", "BAD_REQUEST", 400);
 
-    // Deactivate — blocks login but preserves all work data
     await prisma.user.update({
       where: { id },
       data: { isActive: false, leftAt: new Date() },
     });
 
-    // Clear any active sessions
     await prisma.session.deleteMany({ where: { userId: id } });
 
     return apiSuccess({ deactivated: true, message: "Employee deactivated. Work data preserved." });

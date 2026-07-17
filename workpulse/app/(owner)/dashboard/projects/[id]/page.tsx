@@ -56,8 +56,8 @@ export default function ProjectDetailPage() {
   const [editSubtask, setEditSubtask] = useState<any>(null);
   const [deleteSubtaskId, setDeleteSubtaskId] = useState<string | null>(null);
   const [newSubtask, setNewSubtask] = useState({ name: "", description: "", estimatedHours: 0, assignedToIds: [] as string[] });
-  const [newTeamIds, setNewTeamIds] = useState<string[]>([]);
-  const [showTeamAssignment, setShowTeamAssignment] = useState(false);
+  const [newLeaderIds, setNewLeaderIds] = useState<string[]>([]);
+  const [showLeaderAssignment, setShowLeaderAssignment] = useState(false);
   const [assignSubtask, setAssignSubtask] = useState<any>(null);
   const [assignSelectedIds, setAssignSelectedIds] = useState<string[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -73,10 +73,10 @@ export default function ProjectDetailPage() {
     staleTime: 30000,
   });
 
-  const { data: allTeams } = useQuery({
-    queryKey: ["teams"],
+  const { data: employees } = useQuery({
+    queryKey: ["employees-all"],
     queryFn: async () => {
-      const res = await fetch("/api/teams");
+      const res = await fetch("/api/employees");
       const { data } = await res.json();
       return data || [];
     },
@@ -173,12 +173,12 @@ export default function ProjectDetailPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const assignTeamsMutation = useMutation({
-    mutationFn: async (teamIds: string[]) => {
+  const assignLeadersMutation = useMutation({
+    mutationFn: async (leaderIds: string[]) => {
       const res = await fetch(`/api/projects/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teamIds }),
+        body: JSON.stringify({ leaderIds }),
       });
       const { data, error } = await res.json();
       if (error) throw new Error(error.message);
@@ -186,8 +186,8 @@ export default function ProjectDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project", id] });
-      toast.success("Teams updated");
-      setShowTeamAssignment(false);
+      toast.success("Leaders updated");
+      setShowLeaderAssignment(false);
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -247,7 +247,7 @@ export default function ProjectDetailPage() {
       hours: Math.round((minutes / 60) * 10) / 10,
     }));
 
-  const teamMembers = (project?.projectTeams || []).flatMap((pt: any) => pt.team?.members || []);
+  const allMembers = employees || [];
 
   const subtaskColumns = [
     {
@@ -314,7 +314,7 @@ export default function ProjectDetailPage() {
           <div className="flex items-center gap-1">
             <div className="flex flex-wrap gap-1">
               {assignedIds.slice(0, 2).map((id: string) => {
-                const member = teamMembers.find((m: any) => m.id === id);
+                const member = allMembers.find((m: any) => m.id === id);
                 return member ? (
                   <span key={id} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                     {member.name?.split(" ")[0]}
@@ -407,9 +407,8 @@ export default function ProjectDetailPage() {
               <span>Est: {project.estimatedHours}h</span>
             </div>
             {(() => {
-              const teamLeaders = (project.projectTeams || [])
-                .flatMap((pt: any) => pt.team?.teamLeads || [])
-                .map((tl: any) => tl.user)
+              const teamLeaders = (project.projectLeaders || [])
+                .map((pl: any) => pl.user)
                 .filter((u: any) => u);
               if (teamLeaders.length === 0) return null;
               return (
@@ -645,32 +644,35 @@ export default function ProjectDetailPage() {
         <TabsContent value="team">
           <Card className="border border-border p-5 rounded-xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-foreground">Assigned Teams</h3>
+              <h3 className="text-sm font-medium text-foreground">Assigned Leaders</h3>
               <Button
                 variant="outline"
                 size="sm"
                 className="border-border text-foreground"
                 onClick={() => {
-                  setNewTeamIds((project.projectTeams || []).map((pt: any) => pt.team.id));
-                  setShowTeamAssignment(true);
+                  setNewLeaderIds((project.projectLeaders || []).map((pl: any) => pl.user.id));
+                  setShowLeaderAssignment(true);
                 }}
               >
-                <Users className="h-3.5 w-3.5 mr-1.5" /> Manage Teams
+                <Users className="h-3.5 w-3.5 mr-1.5" /> Manage Leaders
               </Button>
             </div>
             <div className="space-y-3">
-              {project.projectTeams?.length === 0 ? (
-                <p className="text-muted-foreground text-sm py-8 text-center">No teams assigned</p>
+              {project.projectLeaders?.length === 0 ? (
+                <p className="text-muted-foreground text-sm py-8 text-center">No leaders assigned</p>
               ) : (
-                project.projectTeams?.map((pt: any) => (
-                  <div key={pt.team.id} className="p-4 rounded-lg bg-surface-raised">
-                    <p className="font-medium text-foreground">{pt.team.name}</p>
-                    <div className="flex gap-2 mt-2 flex-wrap">
-                      {pt.team.members?.map((m: any) => (
-                        <Badge key={m.id} variant="outline" className="border-border text-muted-foreground">
-                          {m.name}
-                        </Badge>
-                      ))}
+                project.projectLeaders?.map((pl: any) => (
+                  <div key={pl.user.id} className="p-4 rounded-lg bg-surface-raised">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                        <span className="text-xs font-medium text-primary">
+                          {pl.user.name?.split(" ").map((n: string) => n[0]).join("")}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{pl.user.name}</p>
+                        <p className="text-xs text-muted-foreground">{pl.user.role?.replace("_", " ")}</p>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -727,10 +729,10 @@ export default function ProjectDetailPage() {
                 Assign To ({newSubtask.assignedToIds.length} selected)
               </Label>
               <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-lg border border-border p-2">
-                {teamMembers.length === 0 ? (
+                {allMembers.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-2">No team members available</p>
                 ) : (
-                  teamMembers.map((m: any) => (
+                  allMembers.map((m: any) => (
                     <label
                       key={m.id}
                       className="flex items-center gap-2.5 p-2 rounded-md hover:bg-surface cursor-pointer text-sm"
@@ -821,10 +823,10 @@ export default function ProjectDetailPage() {
           {assignSubtask && (
             <div className="space-y-3 max-h-64 overflow-y-auto">
               <p className="text-sm text-muted-foreground">{assignSubtask.name}</p>
-              {teamMembers.length === 0 ? (
+              {allMembers.length === 0 ? (
                 <p className="text-muted-foreground text-sm text-center py-4">No team members available</p>
               ) : (
-                teamMembers.map((m: any) => (
+                allMembers.map((m: any) => (
                   <label
                     key={m.id}
                     className="flex items-center gap-2.5 p-2.5 rounded-lg hover:bg-surface cursor-pointer"
@@ -863,46 +865,46 @@ export default function ProjectDetailPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showTeamAssignment} onOpenChange={setShowTeamAssignment}>
+      <Dialog open={showLeaderAssignment} onOpenChange={setShowLeaderAssignment}>
         <DialogContent className="bg-surface-raised border-border max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-foreground">Assign Teams to Project</DialogTitle>
+            <DialogTitle className="text-foreground">Assign Leaders to Project</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 max-h-64 overflow-y-auto">
-            {(allTeams || []).length === 0 ? (
-              <p className="text-muted-foreground text-sm text-center py-4">No teams available</p>
+            {(!employees || employees.length === 0) ? (
+              <p className="text-muted-foreground text-sm text-center py-4">No employees available</p>
             ) : (
-              (allTeams || []).map((t: any) => (
+              (employees || []).filter((e: any) => e.role === "TEAM_LEADER").map((emp: any) => (
                 <label
-                  key={t.id}
+                  key={emp.id}
                   className="flex items-center gap-2.5 p-2.5 rounded-lg hover:bg-surface cursor-pointer"
                 >
                   <Checkbox
-                    checked={newTeamIds.includes(t.id)}
+                    checked={newLeaderIds.includes(emp.id)}
                     onCheckedChange={(checked) => {
-                      setNewTeamIds((prev) =>
+                      setNewLeaderIds((prev) =>
                         checked
-                          ? [...prev, t.id]
-                          : prev.filter((tid) => tid !== t.id)
+                          ? [...prev, emp.id]
+                          : prev.filter((lid) => lid !== emp.id)
                       );
                     }}
                   />
                   <div>
-                    <p className="text-sm font-medium text-foreground">{t.name}</p>
-                    <p className="text-xs text-muted-foreground">{t._count?.members || 0} members</p>
+                    <p className="text-sm font-medium text-foreground">{emp.name}</p>
+                    <p className="text-xs text-muted-foreground">{emp.designation || "Team Leader"}</p>
                   </div>
                 </label>
               ))
             )}
           </div>
           <div className="flex justify-end gap-3 mt-4">
-            <Button variant="outline" onClick={() => setShowTeamAssignment(false)} className="border-border text-foreground">
+            <Button variant="outline" onClick={() => setShowLeaderAssignment(false)} className="border-border text-foreground">
               Cancel
             </Button>
             <Button
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
-              onClick={() => assignTeamsMutation.mutate(newTeamIds)}
-              disabled={assignTeamsMutation.isPending}
+              onClick={() => assignLeadersMutation.mutate(newLeaderIds)}
+              disabled={assignLeadersMutation.isPending}
             >
               Save
             </Button>

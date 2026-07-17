@@ -32,7 +32,6 @@ const employeeNavItems = [
 
 const teamLeaderNavItems = [
   ...employeeNavItems,
-  { href: "/employee/team-tasks", label: "Team Tasks", icon: Users },
 ];
 
 export function EmployeeSidebar() {

@@ -43,16 +43,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const project = await prisma.project.findUnique({ where: { id } });
     if (!project) return apiError("Project not found", "NOT_FOUND", 404);
 
-    // Team leaders can only add subtasks to projects their team is assigned to
+    // Team leaders can only add subtasks to projects they are assigned to
     if (session.user.role === "TEAM_LEADER") {
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { teamId: true },
+      const leaderAssigned = await prisma.projectLeader.findFirst({
+        where: { projectId: id, userId: session.user.id },
       });
-      const teamAssigned = await prisma.projectTeam.findFirst({
-        where: { projectId: id, teamId: user?.teamId || "" },
-      });
-      if (!teamAssigned) return apiError("Your team is not assigned to this project", "FORBIDDEN", 403);
+      if (!leaderAssigned) return apiError("You are not assigned to this project", "FORBIDDEN", 403);
     }
 
     const subtask = await prisma.subTask.create({

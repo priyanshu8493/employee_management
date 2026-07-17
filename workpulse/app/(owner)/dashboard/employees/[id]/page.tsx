@@ -73,16 +73,6 @@ export default function EmployeeDetailPage() {
     staleTime: 30000,
   });
 
-  const { data: teams } = useQuery({
-    queryKey: ["teams"],
-    queryFn: async () => {
-      const res = await fetch("/api/teams");
-      const { data } = await res.json();
-      return data || [];
-    },
-    staleTime: 60000,
-  });
-
   const [leaveYear, setLeaveYear] = useState(new Date().getFullYear());
 
   const { data: leaveStats } = useQuery({
@@ -197,7 +187,7 @@ export default function EmployeeDetailPage() {
               <p className="text-muted-foreground">{employee.email}</p>
               <div className="flex items-center gap-2 mt-1">
                 {employee.designation && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">{employee.designation}</span>}
-                <span className="text-xs bg-surface-raised px-2 py-0.5 rounded">{employee.team?.name || "No team"}</span>
+                <span className="text-xs bg-surface-raised px-2 py-0.5 rounded">{employee.role?.replace("_", " ")}</span>
                 <div className="flex items-center gap-1 text-xs">
                   <div className={`w-2 h-2 rounded-full ${employee.isActive ? "bg-success" : "bg-muted-foreground"}`} />
                   <span className={employee.isActive ? "text-success" : "text-muted-foreground"}>
@@ -286,24 +276,6 @@ export default function EmployeeDetailPage() {
                 className="bg-surface border-border text-foreground"
               />
             </div>
-            <div className="space-y-2">
-              <Label className="text-foreground">Team</Label>
-              <Select defaultValue={employee.teamId || ""} onValueChange={(v) => {
-                const el = document.getElementById("edit-teamId") as HTMLInputElement;
-                if (el) el.value = v;
-              }}>
-                <SelectTrigger className="bg-surface border-border text-foreground">
-                  <SelectValue placeholder="Select team" />
-                </SelectTrigger>
-                <SelectContent className="bg-surface-raised border-border">
-                  <SelectItem value="">No team</SelectItem>
-                  {(teams || []).map((t: any) => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <input type="hidden" id="edit-teamId" defaultValue={employee.teamId || ""} />
-            </div>
           </div>
           <div className="flex justify-end gap-3 mt-4">
             <Button variant="outline" onClick={() => setEditing(false)} className="border-border text-foreground">Cancel</Button>
@@ -314,9 +286,8 @@ export default function EmployeeDetailPage() {
                 const email = (document.getElementById("edit-email") as HTMLInputElement)?.value;
                 const designation = (document.getElementById("edit-designation") as HTMLInputElement)?.value;
                 const phone = (document.getElementById("edit-phone") as HTMLInputElement)?.value;
-                const teamId = (document.getElementById("edit-teamId") as HTMLInputElement)?.value;
                 const joinedAt = (document.getElementById("edit-joinedAt") as HTMLInputElement)?.value;
-                if (name) updateMutation.mutate({ name, email: email || undefined, designation, phone, teamId: teamId || null, joinedAt: joinedAt || null });
+                if (name) updateMutation.mutate({ name, email: email || undefined, designation, phone, joinedAt: joinedAt || null });
               }}
             >
               Save

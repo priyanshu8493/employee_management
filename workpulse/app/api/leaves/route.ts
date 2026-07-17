@@ -14,22 +14,7 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = {};
 
     if (session.user.role === "EMPLOYEE" || session.user.role === "TEAM_LEADER") {
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { teamId: true },
-      });
-
-      if (session.user.role === "TEAM_LEADER" && user?.teamId) {
-        const teamMemberIds = await prisma.user.findMany({
-          where: { teamId: user.teamId, isActive: true },
-          select: { id: true },
-        });
-        where.userId = {
-          in: [...teamMemberIds.map((m) => m.id), session.user.id],
-        };
-      } else {
-        where.userId = session.user.id;
-      }
+      where.userId = session.user.id;
     }
 
     if (dateParam) {
@@ -48,7 +33,7 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         user: {
-          select: { id: true, name: true, email: true, avatarUrl: true, team: { select: { id: true, name: true } } },
+          select: { id: true, name: true, email: true, avatarUrl: true },
         },
       },
       orderBy: { date: "desc" },
@@ -110,7 +95,7 @@ export async function POST(request: NextRequest) {
         },
         include: {
           user: {
-            select: { id: true, name: true, email: true, avatarUrl: true, team: { select: { id: true, name: true } } },
+            select: { id: true, name: true, email: true, avatarUrl: true },
           },
         },
       });

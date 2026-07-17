@@ -25,28 +25,15 @@ import { formatDate } from "@/lib/utils";
 
 export default function QcReportsPage() {
   const [selectedReport, setSelectedReport] = useState<any>(null);
-  const [teamFilter, setTeamFilter] = useState("");
 
   const { data: reports, isLoading } = useQuery({
-    queryKey: ["qc-reports", teamFilter],
+    queryKey: ["qc-reports"],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (teamFilter && teamFilter !== "all") params.set("teamId", teamFilter);
-      const res = await fetch(`/api/qc/reports?${params}`);
+      const res = await fetch(`/api/qc/reports`);
       const { data } = await res.json();
       return data || [];
     },
     staleTime: 15000,
-  });
-
-  const { data: teams } = useQuery({
-    queryKey: ["teams"],
-    queryFn: async () => {
-      const res = await fetch("/api/teams");
-      const { data } = await res.json();
-      return data || [];
-    },
-    staleTime: 60000,
   });
 
   const columns = [
@@ -55,11 +42,6 @@ export default function QcReportsPage() {
       header: "Date",
       sortable: true,
       render: (r: any) => <span className="font-medium">{formatDate(r.date)}</span>,
-    },
-    {
-      key: "team",
-      header: "Team",
-      render: (r: any) => <span>{r.team?.name}</span>,
     },
     {
       key: "teamLead",
@@ -118,19 +100,6 @@ export default function QcReportsPage() {
             Quality control reports submitted by team leaders
           </p>
         </div>
-        <div className="w-48">
-          <Select value={teamFilter} onValueChange={(v) => setTeamFilter(v || "")}>
-            <SelectTrigger className="bg-surface border-border text-foreground">
-              <SelectValue placeholder="All Teams" />
-            </SelectTrigger>
-            <SelectContent className="bg-surface-raised border-border">
-              <SelectItem value="all">All Teams</SelectItem>
-              {(teams || []).map((t: any) => (
-                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
       <DataTable
@@ -154,10 +123,6 @@ export default function QcReportsPage() {
               </DialogHeader>
               <div className="space-y-6">
                 <div className="flex gap-4 text-sm">
-                  <div className="p-3 rounded-lg bg-surface border border-border flex-1">
-                    <p className="text-muted-foreground text-xs mb-1">Team</p>
-                    <p className="font-medium">{selectedReport.team?.name}</p>
-                  </div>
                   <div className="p-3 rounded-lg bg-surface border border-border flex-1">
                     <p className="text-muted-foreground text-xs mb-1">Team Leader</p>
                     <p className="font-medium">{selectedReport.teamLead?.name}</p>

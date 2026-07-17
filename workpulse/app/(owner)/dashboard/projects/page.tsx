@@ -26,7 +26,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, LayoutGrid, List, Archive, Edit3, Trash2 } from "lucide-react";
+import { Plus, LayoutGrid, List, Archive, Edit3, Trash2, Users } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 
 const PRESET_COLORS = ["#6C63FF", "#22C55E", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4", "#EC4899", "#14B8A6"];
 
@@ -48,7 +50,7 @@ export default function ProjectsPage() {
     estimatedHours: 0,
     startDate: "",
     endDate: "",
-    teamIds: [] as string[],
+    leaderIds: [] as string[],
   });
 
   const [editForm, setEditForm] = useState({
@@ -59,7 +61,7 @@ export default function ProjectsPage() {
     estimatedHours: 0,
     startDate: "",
     endDate: "",
-    teamIds: [] as string[],
+    leaderIds: [] as string[],
   });
 
   const { data: projects, isLoading } = useQuery({
@@ -74,10 +76,10 @@ export default function ProjectsPage() {
     staleTime: 30000,
   });
 
-  const { data: teams } = useQuery({
-    queryKey: ["teams"],
+  const { data: employees } = useQuery({
+    queryKey: ["employees-all"],
     queryFn: async () => {
-      const res = await fetch("/api/teams");
+      const res = await fetch("/api/employees");
       const { data } = await res.json();
       return data || [];
     },
@@ -99,7 +101,7 @@ export default function ProjectsPage() {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       toast.success("Project created");
       setShowCreate(false);
-      setForm({ name: "", description: "", clientName: "", color: "#6C63FF", estimatedHours: 0, startDate: "", endDate: "", teamIds: [] });
+      setForm({ name: "", description: "", clientName: "", color: "#6C63FF", estimatedHours: 0, startDate: "", endDate: "", leaderIds: [] });
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -162,7 +164,7 @@ export default function ProjectsPage() {
       estimatedHours: project.estimatedHours,
       startDate: project.startDate?.split("T")[0] || "",
       endDate: project.endDate?.split("T")[0] || "",
-      teamIds: (project.projectTeams || []).map((pt: any) => pt.team.id),
+      leaderIds: (project.projectLeaders || []).map((pl: any) => pl.user.id),
     });
     setEditProject(project);
   };
@@ -198,13 +200,13 @@ export default function ProjectsPage() {
       ),
     },
     {
-      key: "teams",
-      header: "Teams",
+      key: "leaders",
+      header: "Leaders",
       render: (p: any) => (
         <div className="flex gap-1 flex-wrap">
-          {p.projectTeams?.map((pt: any) => (
-            <span key={pt.team.id} className="text-xs bg-surface-raised px-2 py-0.5 rounded">
-              {pt.team.name}
+          {p.projectLeaders?.map((pl: any) => (
+            <span key={pl.user.id} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+              {pl.user.name}
             </span>
           ))}
         </div>
@@ -353,7 +355,7 @@ export default function ProjectsPage() {
                   />
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>{project._count?.subTasks || 0} tasks</span>
-                    <span>{project.projectTeams?.length || 0} teams</span>
+                    <span>{project.projectLeaders?.length || 0} leaders</span>
                   </div>
                   <div className="flex justify-end gap-1 mt-3 pt-2 border-t border-border">
                     <Button
@@ -469,20 +471,34 @@ export default function ProjectsPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-foreground">Teams</Label>
-              <Select
-                value={form.teamIds[0] || ""}
-                onValueChange={(v) => setForm((p) => ({ ...p, teamIds: v ? [v] : [] }))}
-              >
-                <SelectTrigger className="bg-surface border-border text-foreground">
-                  <SelectValue placeholder="Select team" />
-                </SelectTrigger>
-                <SelectContent className="bg-surface-raised border-border">
-                  {(teams || []).map((t: any) => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-foreground">
+                Team Leaders ({form.leaderIds.length} selected)
+              </Label>
+              <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-lg border border-border p-2">
+                {(employees || []).filter((e: any) => e.role === "TEAM_LEADER").length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-2">No team leaders available</p>
+                ) : (
+                  (employees || []).filter((e: any) => e.role === "TEAM_LEADER").map((emp: any) => (
+                    <label
+                      key={emp.id}
+                      className="flex items-center gap-2.5 p-2 rounded-md hover:bg-surface cursor-pointer text-sm"
+                    >
+                      <Checkbox
+                        checked={form.leaderIds.includes(emp.id)}
+                        onCheckedChange={() => {
+                          setForm((p) => ({
+                            ...p,
+                            leaderIds: p.leaderIds.includes(emp.id)
+                              ? p.leaderIds.filter((id) => id !== emp.id)
+                              : [...p.leaderIds, emp.id],
+                          }));
+                        }}
+                      />
+                      <span className="text-foreground">{emp.name}</span>
+                    </label>
+                  ))
+                )}
+              </div>
             </div>
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="outline" onClick={() => setShowCreate(false)} className="border-border text-foreground">
@@ -570,20 +586,34 @@ export default function ProjectsPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-foreground">Teams</Label>
-                <Select
-                  value={editForm.teamIds[0] || ""}
-                  onValueChange={(v) => setEditForm((p) => ({ ...p, teamIds: v ? [v] : [] }))}
-                >
-                  <SelectTrigger className="bg-surface border-border text-foreground">
-                    <SelectValue placeholder="Select team" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-surface-raised border-border">
-                    {(teams || []).map((t: any) => (
-                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="text-foreground">
+                  Team Leaders ({editForm.leaderIds.length} selected)
+                </Label>
+                <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-lg border border-border p-2">
+                  {(employees || []).filter((e: any) => e.role === "TEAM_LEADER").length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-2">No team leaders available</p>
+                  ) : (
+                    (employees || []).filter((e: any) => e.role === "TEAM_LEADER").map((emp: any) => (
+                      <label
+                        key={emp.id}
+                        className="flex items-center gap-2.5 p-2 rounded-md hover:bg-surface cursor-pointer text-sm"
+                      >
+                        <Checkbox
+                          checked={editForm.leaderIds.includes(emp.id)}
+                          onCheckedChange={() => {
+                            setEditForm((p) => ({
+                              ...p,
+                              leaderIds: p.leaderIds.includes(emp.id)
+                                ? p.leaderIds.filter((id) => id !== emp.id)
+                                : [...p.leaderIds, emp.id],
+                            }));
+                          }}
+                        />
+                        <span className="text-foreground">{emp.name}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <Button variant="outline" onClick={() => setEditProject(null)} className="border-border text-foreground">
@@ -601,7 +631,7 @@ export default function ProjectsPage() {
                         color: editForm.color,
                         estimatedHours: editForm.estimatedHours,
                         startDate: editForm.startDate || undefined,
-                        teamIds: editForm.teamIds,
+                        leaderIds: editForm.leaderIds,
                       },
                     });
                   }}

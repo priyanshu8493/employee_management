@@ -14,7 +14,6 @@ interface AuthUser {
   name: string;
   role: Role;
   avatarUrl: string | null;
-  teamId: string | null;
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -71,7 +70,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             name: user.name,
             role: user.role,
             avatarUrl: user.avatarUrl,
-            teamId: user.teamId,
           };
         } catch (error) {
           console.error("[auth] Unexpected login error:", error);
@@ -87,7 +85,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = authUser.id;
         token.role = authUser.role;
         token.avatarUrl = authUser.avatarUrl;
-        token.teamId = authUser.teamId;
       }
       return token;
     },
@@ -96,7 +93,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
         session.user.avatarUrl = token.avatarUrl as string | null;
-        session.user.teamId = token.teamId as string | null;
       }
       return session;
     },

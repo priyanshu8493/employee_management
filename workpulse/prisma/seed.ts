@@ -9,15 +9,13 @@ async function main() {
   await prisma.qcReport.deleteMany();
   await prisma.timeEntry.deleteMany();
   await prisma.subTaskAssignment.deleteMany();
-  await prisma.teamLead.deleteMany();
+  await prisma.projectLeader.deleteMany();
   await prisma.subTask.deleteMany();
-  await prisma.projectTeam.deleteMany();
   await prisma.project.deleteMany();
   await prisma.leave.deleteMany();
   await prisma.session.deleteMany();
   await prisma.account.deleteMany();
   await prisma.user.deleteMany();
-  await prisma.team.deleteMany();
 
   console.log("Creating owner...");
 
@@ -35,35 +33,32 @@ async function main() {
   });
   console.log(`Created owner: ${owner.email}`);
 
-  const team1 = await prisma.team.create({ data: { name: "Development", description: "Software development team" } });
-  const team2 = await prisma.team.create({ data: { name: "Design", description: "Design and creative team" } });
-  console.log("Teams created");
-
   type EmployeeEntry = {
     name: string;
     email: string;
     password: string;
+    role: "EMPLOYEE" | "TEAM_LEADER";
   };
 
   const employeeList: EmployeeEntry[] = [
-    { name: "Mithun Kundu", email: "mithun.kundu74@gmail.com", password: "Admin@1234" },
-    { name: "Bijoy Das", email: "bijoydas.mbc@gmail.com", password: "Admin@1234" },
-    { name: "Soma Biswas", email: "somabiswas938@gmail.com", password: "Admin@1234" },
-    { name: "Jayanta Chatterjee", email: "chatterjeejayanta219@gmail.com", password: "Admin@1234" },
-    { name: "Biswajit Sharma", email: "biswajitsharma031@gmail.com", password: "Admin@1234" },
-    { name: "Birendra Krishna Agasty", email: "agastybirendra@gmail.com", password: "Admin@1234" },
-    { name: "Kankan Bhadra", email: "kankan.bhadra@gmail.com", password: "Admin@1234" },
-    { name: "Ujjwal Paramanik", email: "paramanikujjwal56@gmail.com", password: "Admin@1234" },
-    { name: "Timir Mahata", email: "timirmahata332@gmail.com", password: "Admin@1234" },
-    { name: "Sourav Chakraborty", email: "bsouravchakraborty0804@gmail.com", password: "Admin@1234" },
-    { name: "Suvansu Khan", email: "adhikaripriya327@gmail.com", password: "Admin@1234" },
-    { name: "Biswanath Karmakar", email: "rupam.karmakar007@gmail.com", password: "Admin@1234" },
-    { name: "Pabitra Das", email: "rkrabin222@gmail.com", password: "Admin@1234" },
-    { name: "Somnath Mandal", email: "Somnathmandal084@gmail.com", password: "Admin@1234" },
-    { name: "Hemanta Mandal", email: "hemantamandal596@gmail.com", password: "Admin@1234" },
-    { name: "Anita Kundu", email: "anitakundu645@gmail.com", password: "Admin@1234" },
-    { name: "Jaydip Chatterjee", email: "joydipc997@gmail.com", password: "Admin@1234" },
-    { name: "Sourav Halder", email: "8389090610sou@gmail.com", password: "Admin@1234" },
+    { name: "Mithun Kundu", email: "mithun.kundu74@gmail.com", password: "Admin@1234", role: "TEAM_LEADER" },
+    { name: "Bijoy Das", email: "bijoydas.mbc@gmail.com", password: "Admin@1234", role: "TEAM_LEADER" },
+    { name: "Soma Biswas", email: "somabiswas938@gmail.com", password: "Admin@1234", role: "EMPLOYEE" },
+    { name: "Jayanta Chatterjee", email: "chatterjeejayanta219@gmail.com", password: "Admin@1234", role: "EMPLOYEE" },
+    { name: "Biswajit Sharma", email: "biswajitsharma031@gmail.com", password: "Admin@1234", role: "EMPLOYEE" },
+    { name: "Birendra Krishna Agasty", email: "agastybirendra@gmail.com", password: "Admin@1234", role: "EMPLOYEE" },
+    { name: "Kankan Bhadra", email: "kankan.bhadra@gmail.com", password: "Admin@1234", role: "EMPLOYEE" },
+    { name: "Ujjwal Paramanik", email: "paramanikujjwal56@gmail.com", password: "Admin@1234", role: "EMPLOYEE" },
+    { name: "Timir Mahata", email: "timirmahata332@gmail.com", password: "Admin@1234", role: "EMPLOYEE" },
+    { name: "Sourav Chakraborty", email: "bsouravchakraborty0804@gmail.com", password: "Admin@1234", role: "EMPLOYEE" },
+    { name: "Suvansu Khan", email: "adhikaripriya327@gmail.com", password: "Admin@1234", role: "EMPLOYEE" },
+    { name: "Biswanath Karmakar", email: "rupam.karmakar007@gmail.com", password: "Admin@1234", role: "EMPLOYEE" },
+    { name: "Pabitra Das", email: "rkrabin222@gmail.com", password: "Admin@1234", role: "EMPLOYEE" },
+    { name: "Somnath Mandal", email: "Somnathmandal084@gmail.com", password: "Admin@1234", role: "EMPLOYEE" },
+    { name: "Hemanta Mandal", email: "hemantamandal596@gmail.com", password: "Admin@1234", role: "EMPLOYEE" },
+    { name: "Anita Kundu", email: "anitakundu645@gmail.com", password: "Admin@1234", role: "EMPLOYEE" },
+    { name: "Jaydip Chatterjee", email: "joydipc997@gmail.com", password: "Admin@1234", role: "EMPLOYEE" },
+    { name: "Sourav Halder", email: "8389090610sou@gmail.com", password: "Admin@1234", role: "EMPLOYEE" },
   ];
 
   const hashPromises = employeeList.map((e) => bcrypt.hash(e.password, 12));
@@ -76,8 +71,7 @@ async function main() {
           name: e.name,
           email: e.email.toLowerCase(),
           passwordHash: hashes[i],
-          role: "EMPLOYEE",
-          teamId: i < 9 ? team1.id : team2.id,
+          role: e.role,
           isActive: true,
         },
       })
@@ -93,15 +87,15 @@ async function main() {
   });
   const projects = await prisma.project.findMany();
 
-  await prisma.projectTeam.createMany({
+  const teamLeaders = employees.filter((e) => e.role === "TEAM_LEADER");
+  await prisma.projectLeader.createMany({
     data: [
-      { projectId: projects[0].id, teamId: team1.id },
-      { projectId: projects[0].id, teamId: team2.id },
-      { projectId: projects[1].id, teamId: team1.id },
-      { projectId: projects[1].id, teamId: team2.id },
+      { projectId: projects[0].id, userId: teamLeaders[0].id },
+      { projectId: projects[0].id, userId: teamLeaders[1].id },
+      { projectId: projects[1].id, userId: teamLeaders[0].id },
     ],
   });
-  console.log("Projects created");
+  console.log("Projects and leader assignments created");
 
   const subtasks = await Promise.all([
     prisma.subTask.create({ data: { name: "User management module", projectId: projects[0].id, status: "IN_PROGRESS", estimatedHours: 80, assignments: { create: { userId: employees[0].id } } } }),
@@ -167,7 +161,7 @@ async function main() {
   console.log("\nLogin credentials:");
   console.log("  Owner: rabi@smcadservices.com / Admin@1234");
   for (const e of employeeList) {
-    console.log(`  ${e.name}: ${e.email.toLowerCase()} / ${e.password}`);
+    console.log(`  ${e.name}: ${e.email.toLowerCase()} / ${e.password} (${e.role})`);
   }
 }
 

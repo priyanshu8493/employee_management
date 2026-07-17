@@ -14,20 +14,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const project = await prisma.project.findUnique({
       where: { id },
       include: {
-        projectTeams: {
+        projectLeaders: {
           include: {
-            team: {
-              select: {
-                id: true,
-                name: true,
-                members: { select: { id: true, name: true, avatarUrl: true } },
-                teamLeads: {
-                  select: {
-                    user: { select: { id: true, name: true, avatarUrl: true } },
-                  },
-                },
-              },
-            },
+            user: { select: { id: true, name: true, avatarUrl: true, role: true } },
           },
         },
         subTasks: {
@@ -62,7 +51,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const existing = await prisma.project.findUnique({ where: { id } });
     if (!existing) return apiError("Project not found", "NOT_FOUND", 404);
 
-    const { teamIds, startDate, endDate, ...projectFields } = parsed;
+    const { leaderIds, startDate, endDate, ...projectFields } = parsed;
 
     const project = await prisma.project.update({
       where: { id },
@@ -70,16 +59,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         ...projectFields,
         startDate: startDate ? new Date(startDate) : undefined,
         endDate: endDate ? new Date(endDate) : undefined,
-        projectTeams: teamIds
+        projectLeaders: leaderIds !== undefined
           ? {
               deleteMany: {},
-              create: teamIds.map((teamId) => ({ teamId })),
+              create: leaderIds.map((userId) => ({ userId })),
             }
           : undefined,
       },
       include: {
-        projectTeams: {
-          include: { team: { select: { id: true, name: true } } },
+        projectLeaders: {
+          include: { user: { select: { id: true, name: true, avatarUrl: true, role: true } } },
         },
       },
     });
@@ -112,7 +101,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return apiSuccess({ message: "Project archived (has time entries)" });
     }
 
-    await prisma.projectTeam.deleteMany({ where: { projectId: id } });
+    await prisma.projectLeader.deleteMany({ where: { projectId: id } });
     await prisma.subTask.deleteMany({ where: { projectId: id } });
     await prisma.project.delete({ where: { id } });
     return apiSuccess({ deleted: true });

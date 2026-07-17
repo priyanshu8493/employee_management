@@ -39,9 +39,7 @@ model User {
   leftAt       DateTime?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
-  teamId       String?
-  team         Team?             @relation("TeamMembers", fields: [teamId], references: [id])
-  teamLeads    TeamLead[]
+  projectLeaders ProjectLeader[]
   timeEntries    TimeEntry[]
   subTaskAssignments SubTaskAssignment[]
   qcReports      QcReport[]   @relation("QcTeamLead")
@@ -51,20 +49,6 @@ model User {
   sessions     Session[]
 
   @@map("users")
-}
-
-model Team {
-  id          String        @id @default(cuid())
-  name        String
-  description String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  members     User[]        @relation("TeamMembers")
-  teamLeads   TeamLead[]
-  projectTeams ProjectTeam[]
-  qcReports   QcReport[]
-
-  @@map("teams")
 }
 
 model Project {
@@ -81,20 +65,20 @@ model Project {
   updatedAt       DateTime       @updatedAt
   subTasks        SubTask[]
   timeEntries     TimeEntry[]
-  projectTeams    ProjectTeam[]
+  projectLeaders  ProjectLeader[]
 
   @@map("projects")
 }
 
-model ProjectTeam {
-  projectId String
-  teamId    String
+model ProjectLeader {
+  projectId  String
+  userId     String
   assignedAt DateTime @default(now())
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@id([projectId, teamId])
-  @@map("project_teams")
+  @@id([projectId, userId])
+  @@map("project_leaders")
 }
 
 model SubTask {
@@ -133,8 +117,6 @@ model TimeEntry {
 
 model QcReport {
   id         String      @id @default(cuid())
-  teamId     String
-  team       Team        @relation(fields: [teamId], references: [id])
   teamLeadId String
   teamLead   User        @relation("QcTeamLead", fields: [teamLeadId], references: [id])
   date       DateTime    @default(now())
@@ -186,17 +168,6 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
-}
-
-model TeamLead {
-  teamId     String
-  userId     String
-  assignedAt DateTime @default(now())
-  team       Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([teamId, userId])
-  @@map("team_leads")
 }
 
 model SubTaskAssignment {

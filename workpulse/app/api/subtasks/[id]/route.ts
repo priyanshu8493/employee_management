@@ -16,7 +16,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       where: { id },
       include: {
         assignments: { select: { userId: true } },
-        project: { include: { projectTeams: { select: { teamId: true } } } },
+        project: { include: { projectLeaders: { select: { userId: true } } } },
       },
     });
     if (!existing) return apiError("SubTask not found", "NOT_FOUND", 404);
@@ -45,15 +45,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return apiSuccess(subtask);
     }
 
-    // TEAM_LEADER can update assignments and status (scoped to their team's projects)
+    // TEAM_LEADER can update assignments and status (scoped to their assigned projects)
     if (session.user.role === "TEAM_LEADER") {
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { teamId: true },
-      });
-      const teamIds = existing.project.projectTeams.map((pt) => pt.teamId);
-      if (!user?.teamId || !teamIds.includes(user.teamId)) {
-        return apiError("Your team is not assigned to this project", "FORBIDDEN", 403);
+      const leaderIds = existing.project.projectLeaders.map((pl) => pl.userId);
+      if (!leaderIds.includes(session.user.id)) {
+        return apiError("You are not assigned to this project", "FORBIDDEN", 403);
       }
 
       const updateData: Record<string, unknown> = {};

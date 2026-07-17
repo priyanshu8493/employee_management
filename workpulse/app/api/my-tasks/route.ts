@@ -17,9 +17,6 @@ export async function GET(request: NextRequest) {
       },
       project: {
         status: "ACTIVE",
-        projectTeams: {
-          some: { teamId: session.user.teamId || "" },
-        },
       },
     };
 

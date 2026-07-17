@@ -14,11 +14,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const report = await prisma.qcReport.findUnique({
       where: { id },
       include: {
-        team: { select: { id: true, name: true, members: { select: { id: true } } } },
         teamLead: { select: { id: true, name: true, avatarUrl: true } },
         mistakes: {
           include: {
-            employee: { select: { id: true, name: true, avatarUrl: true, teamId: true } },
+            employee: { select: { id: true, name: true, avatarUrl: true } },
           },
           orderBy: { createdAt: "desc" },
         },
@@ -29,8 +28,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     if (session.user.role === "EMPLOYEE") {
       const hasMistake = report.mistakes.some((m) => m.employeeId === session.user.id);
-      const isOwnTeam = report.team?.members?.some((m: { id: string }) => m.id === session.user.id);
-      if (!hasMistake && !isOwnTeam) {
+      if (!hasMistake) {
         return apiError("Forbidden", "FORBIDDEN", 403);
       }
     }

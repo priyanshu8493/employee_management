@@ -55,9 +55,9 @@ export async function GET() {
           estimatedHours: true,
           updatedAt: true,
           _count: { select: { subTasks: true } },
-          projectTeams: {
+          projectLeaders: {
             select: {
-              team: { select: { id: true, name: true, members: { select: { id: true, name: true, avatarUrl: true } } } },
+              user: { select: { id: true, name: true, avatarUrl: true } },
             },
           },
         },
@@ -71,7 +71,7 @@ export async function GET() {
           checkInAt: true,
           checkOutAt: true,
           durationMinutes: true,
-          user: { select: { id: true, name: true, email: true, avatarUrl: true, team: { select: { id: true, name: true } } } },
+          user: { select: { id: true, name: true, email: true, avatarUrl: true } },
           project: { select: { id: true, name: true, color: true } },
           subTask: { select: { id: true, name: true } },
         },
@@ -82,7 +82,7 @@ export async function GET() {
         where: { date: { gte: startOfDay, lt: dayEnd } },
         select: {
           id: true,
-          user: { select: { id: true, name: true, email: true, avatarUrl: true, team: { select: { id: true, name: true } } } },
+          user: { select: { id: true, name: true, email: true, avatarUrl: true } },
         },
         orderBy: { createdAt: "desc" },
       }),

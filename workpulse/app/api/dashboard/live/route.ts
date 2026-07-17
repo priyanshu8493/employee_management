@@ -10,14 +10,14 @@ export async function GET() {
     const activeEntries = await prisma.timeEntry.findMany({
       where: { checkOutAt: null },
       include: {
-        user: { select: { id: true, name: true, email: true, avatarUrl: true, team: { select: { id: true, name: true } } } },
+        user: { select: { id: true, name: true, email: true, avatarUrl: true } },
         project: { select: { id: true, name: true, color: true } },
         subTask: { select: { id: true, name: true } },
       },
       orderBy: { checkInAt: "desc" },
     });
 
-    return apiSuccess(activeEntries.filter((e) => e.user));
+    return apiSuccess(activeEntries.filter((e: any) => e.user));
   } catch (error) {
     return handleApiError(error);
   }

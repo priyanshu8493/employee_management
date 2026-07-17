@@ -14,7 +14,7 @@ export const projectSchema = z.object({
   estimatedHours: z.number().min(0, "Must be positive").default(0),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  teamIds: z.array(z.string()).optional(),
+  leaderIds: z.array(z.string()).optional(),
 });
 
 export const subTaskSchema = z.object({
@@ -31,20 +31,12 @@ export const employeeSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters").optional(),
   currentPassword: z.string().optional(),
   role: z.enum(["EMPLOYEE", "TEAM_LEADER"]).optional(),
-  teamId: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
   avatarUrl: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   designation: z.string().optional().nullable(),
   joinedAt: z.string().optional(),
   leftAt: z.string().optional().nullable(),
-});
-
-export const teamSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
-  memberIds: z.array(z.string()).optional(),
-  teamLeadIds: z.array(z.string()).optional(),
 });
 
 export const checkInSchema = z.object({
@@ -84,6 +76,5 @@ export const reportFiltersSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   projectIds: z.array(z.string()).optional(),
-  teamIds: z.array(z.string()).optional(),
   employeeIds: z.array(z.string()).optional(),
 });

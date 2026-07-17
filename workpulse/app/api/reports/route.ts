@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const projectIds = searchParams.get("projectIds")?.split(",").filter(Boolean);
-    const teamIds = searchParams.get("teamIds")?.split(",").filter(Boolean);
     const employeeIds = searchParams.get("employeeIds")?.split(",").filter(Boolean);
 
     const timeEntryWhere: Record<string, unknown> = {};
@@ -24,9 +23,6 @@ export async function GET(request: NextRequest) {
     }
     if (projectIds?.length) timeEntryWhere.projectId = { in: projectIds };
     if (employeeIds?.length) timeEntryWhere.userId = { in: employeeIds };
-    if (teamIds?.length) {
-      timeEntryWhere.user = { teamId: { in: teamIds } };
-    }
 
     const [employeeHours, projectHours, subTaskHours, allUsers, allProjects, allSubTasks] = await Promise.all([
       prisma.timeEntry.groupBy({
@@ -45,7 +41,7 @@ export async function GET(request: NextRequest) {
         _sum: { durationMinutes: true },
       }),
       prisma.user.findMany({
-        select: { id: true, name: true, email: true, avatarUrl: true, team: { select: { id: true, name: true } } },
+        select: { id: true, name: true, email: true, avatarUrl: true },
       }),
       prisma.project.findMany({
         select: { id: true, name: true, color: true, estimatedHours: true, status: true },
@@ -61,7 +57,6 @@ export async function GET(request: NextRequest) {
 
     const employeesWithTime: Array<{
       id: string; name: string; email?: string; avatarUrl?: string | null;
-      team?: { id: string; name: string } | null;
       totalHours: number;
       projectBreakdown: Array<{ id?: string; name?: string; color?: string; hours: number }>;
     }> = employeeHours

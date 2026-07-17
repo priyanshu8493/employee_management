@@ -34,33 +34,21 @@ export default function EmployeesPage() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>("active");
   const [showCreate, setShowCreate] = useState(false);
-  const [teamFilter, setTeamFilter] = useState("ALL");
-  const [form, setForm] = useState({ name: "", email: "", teamId: "", designation: "", joinedAt: "" });
+  const [form, setForm] = useState({ name: "", email: "", designation: "", joinedAt: "" });
   const [createdPassword, setCreatedPassword] = useState("");
   const [copied, setCopied] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
 
   const { data: employees, isLoading } = useQuery({
-    queryKey: ["employees", teamFilter, tab],
+    queryKey: ["employees", tab],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (teamFilter !== "ALL") params.set("teamId", teamFilter);
       params.set("isActive", tab === "active" ? "true" : "false");
       const res = await fetch(`/api/employees?${params}`);
       const { data } = await res.json();
       return data || [];
     },
     staleTime: 30000,
-  });
-
-  const { data: teams } = useQuery({
-    queryKey: ["teams"],
-    queryFn: async () => {
-      const res = await fetch("/api/teams");
-      const { data } = await res.json();
-      return data || [];
-    },
-    staleTime: 60000,
   });
 
   const createMutation = useMutation({
@@ -78,7 +66,7 @@ export default function EmployeesPage() {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       setCreatedPassword(data.tempPassword);
       toast.success("Employee created");
-      setForm({ name: "", email: "", teamId: "", designation: "", joinedAt: "" });
+      setForm({ name: "", email: "", designation: "", joinedAt: "" });
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -148,12 +136,6 @@ export default function EmployeesPage() {
       header: "Designation",
       sortable: true,
       render: (emp: any) => <span className="text-muted-foreground">{emp.designation || "--"}</span>,
-    },
-    {
-      key: "team",
-      header: "Team",
-      sortable: true,
-      render: (emp: any) => <span className="text-muted-foreground">{emp.team?.name || "--"}</span>,
     },
     {
       key: "hoursThisWeek",
@@ -229,12 +211,6 @@ export default function EmployeesPage() {
       render: (emp: any) => <span className="text-muted-foreground">{emp.designation || "--"}</span>,
     },
     {
-      key: "team",
-      header: "Team",
-      sortable: true,
-      render: (emp: any) => <span className="text-muted-foreground">{emp.team?.name || "--"}</span>,
-    },
-    {
       key: "hoursThisWeek",
       header: "Total Hours Logged",
       sortable: true,
@@ -291,17 +267,6 @@ export default function EmployeesPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Select value={teamFilter} onValueChange={(v) => v && setTeamFilter(v)}>
-            <SelectTrigger className="w-36 bg-surface border-border text-foreground">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-surface-raised border-border">
-              <SelectItem value="ALL">All Teams</SelectItem>
-              {(teams || []).map((t: any) => (
-                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           {tab === "active" && (
             <Button
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -315,7 +280,7 @@ export default function EmployeesPage() {
 
       <div className="flex gap-1 p-1 bg-surface rounded-lg w-fit border border-border">
         <button
-          onClick={() => { setTab("active"); setTeamFilter("ALL"); }}
+          onClick={() => { setTab("active"); }}
           className={cn(
             "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors",
             tab === "active"
@@ -327,7 +292,7 @@ export default function EmployeesPage() {
           Active
         </button>
         <button
-          onClick={() => { setTab("past"); setTeamFilter("ALL"); }}
+          onClick={() => { setTab("past"); }}
           className={cn(
             "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors",
             tab === "past"
@@ -383,22 +348,6 @@ export default function EmployeesPage() {
                 className="bg-surface border-border text-foreground"
                 placeholder="email@company.com"
               />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-foreground">Team</Label>
-              <Select
-                value={form.teamId}
-                onValueChange={(v) => setForm((p) => ({ ...p, teamId: v || "" }))}
-              >
-                <SelectTrigger className="bg-surface border-border text-foreground">
-                  <SelectValue placeholder="Select team" />
-                </SelectTrigger>
-                <SelectContent className="bg-surface-raised border-border">
-                  {(teams || []).map((t: any) => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
             <div className="space-y-2">
               <Label className="text-foreground">Joining Date *</Label>

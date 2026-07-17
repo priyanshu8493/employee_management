@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
     if (!session?.user?.id) return apiError("Unauthorized", "UNAUTHORIZED", 401);
 
     const { searchParams } = new URL(request.url);
-    const teamId = searchParams.get("teamId");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
@@ -23,7 +22,6 @@ export async function GET(request: NextRequest) {
       return apiError("Forbidden", "FORBIDDEN", 403);
     }
 
-    if (teamId) where.teamId = teamId;
     if (startDate) where.date = { gte: new Date(startDate) };
     if (endDate) {
       where.date = { ...(where.date as Record<string, unknown>), lte: new Date(endDate) };
@@ -32,7 +30,6 @@ export async function GET(request: NextRequest) {
     const reports = await prisma.qcReport.findMany({
       where,
       include: {
-        team: { select: { id: true, name: true } },
         teamLead: { select: { id: true, name: true, avatarUrl: true } },
         mistakes: {
           include: {
@@ -60,29 +57,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const parsed = qcReportSchema.parse(body);
 
-    const teamLead = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { teamId: true },
-    });
-
-    if (!teamLead?.teamId) {
-      return apiError("You are not assigned to a team", "NO_TEAM", 400);
-    }
-
-    const isTeamLead = await prisma.teamLead.findUnique({
-      where: { teamId_userId: { teamId: teamLead.teamId, userId: session.user.id } },
-    });
-
-    if (!isTeamLead && session.user.role !== "OWNER") {
-      return apiError("You are not a team leader of your team", "NOT_TEAM_LEADER", 403);
-    }
-
-    const team = await prisma.team.findUnique({ where: { id: teamLead.teamId } });
-    if (!team) return apiError("Team not found", "NOT_FOUND", 404);
-
     const report = await prisma.qcReport.create({
       data: {
-        teamId: teamLead.teamId,
         teamLeadId: session.user.id,
         summary: parsed.summary,
         date: parsed.date ? new Date(parsed.date) : new Date(),
@@ -96,7 +72,6 @@ export async function POST(request: NextRequest) {
           : undefined,
       },
       include: {
-        team: { select: { id: true, name: true } },
         teamLead: { select: { id: true, name: true } },
         mistakes: {
           include: {

@@ -33,7 +33,6 @@ export async function GET(request: NextRequest) {
             date: true,
             summary: true,
             teamLead: { select: { id: true, name: true } },
-            team: { select: { id: true, name: true } },
           },
         },
         employee: { select: { id: true, name: true, avatarUrl: true } },

@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const search = searchParams.get("search");
+    const clientName = searchParams.get("clientName");
 
     const where: Record<string, unknown> = {};
 
@@ -24,8 +25,11 @@ export async function GET(request: NextRequest) {
     if (search) {
       where.name = { contains: search, mode: "insensitive" };
     }
+    if (clientName) {
+      where.clientName = clientName;
+    }
 
-    const [projects, timeAggregates] = await Promise.all([
+    const [projects, timeAggregates, clientNames] = await Promise.all([
       prisma.project.findMany({
         where,
         select: {
@@ -51,6 +55,11 @@ export async function GET(request: NextRequest) {
         where: { durationMinutes: { not: null } },
         _sum: { durationMinutes: true },
       }),
+      prisma.project.findMany({
+        where: { clientName: { not: null } },
+        select: { clientName: true },
+        distinct: ["clientName"],
+      }),
     ]);
 
     const timeByProject = new Map<string, number>();
@@ -63,7 +72,7 @@ export async function GET(request: NextRequest) {
       totalMinutes: timeByProject.get(p.id) || 0,
     }));
 
-    return apiSuccess(projectsWithTime);
+    return apiSuccess({ projects: projectsWithTime, clientNames: clientNames.map((c) => c.clientName).filter(Boolean) as string[] });
   } catch (error) {
     return handleApiError(error);
   }

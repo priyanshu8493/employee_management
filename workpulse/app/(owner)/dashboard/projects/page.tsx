@@ -38,6 +38,7 @@ export default function ProjectsPage() {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [showCreate, setShowCreate] = useState(false);
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [clientFilter, setClientFilter] = useState("ALL");
   const [archiveId, setArchiveId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editProject, setEditProject] = useState<any>(null);
@@ -64,17 +65,21 @@ export default function ProjectsPage() {
     leaderIds: [] as string[],
   });
 
-  const { data: projects, isLoading } = useQuery({
-    queryKey: ["projects", statusFilter],
+  const { data: projectsData, isLoading } = useQuery({
+    queryKey: ["projects", statusFilter, clientFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (statusFilter !== "ALL") params.set("status", statusFilter);
+      if (clientFilter !== "ALL") params.set("clientName", clientFilter);
       const res = await fetch(`/api/projects?${params}`);
       const { data } = await res.json();
-      return data || [];
+      return data || { projects: [], clientNames: [] };
     },
     staleTime: 30000,
   });
+
+  const projects = projectsData?.projects || [];
+  const clientNames = projectsData?.clientNames || [];
 
   const { data: employees } = useQuery({
     queryKey: ["employees-all"],
@@ -283,6 +288,17 @@ export default function ProjectsPage() {
               <SelectItem value="ON_HOLD">On Hold</SelectItem>
               <SelectItem value="COMPLETED">Completed</SelectItem>
               <SelectItem value="ARCHIVED">Archived</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={clientFilter} onValueChange={(v) => v && setClientFilter(v)}>
+            <SelectTrigger className="w-40 bg-surface border-border text-foreground">
+              <SelectValue placeholder="All Clients" />
+            </SelectTrigger>
+            <SelectContent className="bg-surface-raised border-border">
+              <SelectItem value="ALL">All Clients</SelectItem>
+              {clientNames.map((name: string) => (
+                <SelectItem key={name} value={name}>{name}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <div className="flex border border-border rounded-lg overflow-hidden">

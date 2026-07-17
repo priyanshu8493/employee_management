@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -18,10 +18,21 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+function getDaysInRange(start: string, end: string): number {
+  if (!start || !end) return 0;
+  const s = new Date(start);
+  const e = new Date(end);
+  const diff = e.getTime() - s.getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
+}
+
 export default function EmployeeLeavesPage() {
   const queryClient = useQueryClient();
   const [showMarkDialog, setShowMarkDialog] = useState(false);
+  const [leaveMode, setLeaveMode] = useState<"single" | "range">("single");
   const [leaveDate, setLeaveDate] = useState("");
+  const [leaveStartDate, setLeaveStartDate] = useState("");
+  const [leaveEndDate, setLeaveEndDate] = useState("");
   const [leaveReason, setLeaveReason] = useState("");
 
   const { data: leaves, isLoading } = useQuery({
@@ -46,22 +57,32 @@ export default function EmployeeLeavesPage() {
 
   const markMutation = useMutation({
     mutationFn: async () => {
+      const body =
+        leaveMode === "single"
+          ? { date: leaveDate, reason: leaveReason || undefined }
+          : { startDate: leaveStartDate, endDate: leaveEndDate, reason: leaveReason || undefined };
+
       const res = await fetch("/api/leaves", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: leaveDate, reason: leaveReason || undefined }),
+        body: JSON.stringify(body),
       });
       const { data, error } = await res.json();
       if (error) throw new Error(error.message);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["my-leaves"] });
       queryClient.invalidateQueries({ queryKey: ["past-leaves"] });
-      toast.success("Leave marked successfully!");
-      setShowMarkDialog(false);
-      setLeaveDate("");
-      setLeaveReason("");
+      if (data?.created && data?.total) {
+        const msg = data.skipped > 0
+          ? `Marked ${data.created} day(s) of leave (${data.skipped} already existed)`
+          : `Marked ${data.created} day(s) of leave`;
+        toast.success(msg);
+      } else {
+        toast.success("Leave marked successfully!");
+      }
+      resetDialog();
     },
     onError: (err: Error) => {
       toast.error(err.message);
@@ -85,11 +106,30 @@ export default function EmployeeLeavesPage() {
     },
   });
 
+  const resetDialog = () => {
+    setShowMarkDialog(false);
+    setLeaveMode("single");
+    setLeaveDate("");
+    setLeaveStartDate("");
+    setLeaveEndDate("");
+    setLeaveReason("");
+  };
+
   const upcomingLeaves = (leaves || []).filter(
     (l: any) => new Date(l.date) >= new Date(new Date().toDateString())
   );
 
   const today = new Date().toISOString().split("T")[0];
+
+  const previewDays = useMemo(() => {
+    if (leaveMode === "single") return leaveDate ? 1 : 0;
+    return getDaysInRange(leaveStartDate, leaveEndDate);
+  }, [leaveMode, leaveDate, leaveStartDate, leaveEndDate]);
+
+  const canSubmit =
+    leaveMode === "single"
+      ? !!leaveDate
+      : !!leaveStartDate && !!leaveEndDate && leaveStartDate <= leaveEndDate;
 
   return (
     <div className="space-y-8">
@@ -192,7 +232,7 @@ export default function EmployeeLeavesPage() {
         )}
       </Card>
 
-      <Dialog open={showMarkDialog} onOpenChange={(o) => { if (!o) { setShowMarkDialog(false); setLeaveDate(""); setLeaveReason(""); } }}>
+      <Dialog open={showMarkDialog} onOpenChange={(o) => { if (!o) resetDialog(); }}>
         <DialogContent className="bg-surface-raised border-border">
           <DialogHeader>
             <DialogTitle className="text-foreground flex items-center gap-2">
@@ -201,16 +241,74 @@ export default function EmployeeLeavesPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-foreground">Date</Label>
-              <Input
-                type="date"
-                value={leaveDate}
-                min={today}
-                onChange={(e) => setLeaveDate(e.target.value)}
-                className="bg-surface border-border text-foreground"
-              />
+            <div className="flex gap-2 p-1 bg-surface rounded-lg border border-border">
+              <button
+                className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  leaveMode === "single"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setLeaveMode("single")}
+              >
+                Single Day
+              </button>
+              <button
+                className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  leaveMode === "range"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setLeaveMode("range")}
+              >
+                Date Range
+              </button>
             </div>
+
+            {leaveMode === "single" ? (
+              <div className="space-y-2">
+                <Label className="text-foreground">Date</Label>
+                <Input
+                  type="date"
+                  value={leaveDate}
+                  min={today}
+                  onChange={(e) => setLeaveDate(e.target.value)}
+                  className="bg-surface border-border text-foreground"
+                />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-foreground">From</Label>
+                  <Input
+                    type="date"
+                    value={leaveStartDate}
+                    min={today}
+                    onChange={(e) => {
+                      setLeaveStartDate(e.target.value);
+                      if (e.target.value > leaveEndDate) setLeaveEndDate("");
+                    }}
+                    className="bg-surface border-border text-foreground"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-foreground">To</Label>
+                  <Input
+                    type="date"
+                    value={leaveEndDate}
+                    min={leaveStartDate || today}
+                    onChange={(e) => setLeaveEndDate(e.target.value)}
+                    className="bg-surface border-border text-foreground"
+                  />
+                </div>
+              </div>
+            )}
+
+            {leaveMode === "range" && previewDays > 0 && (
+              <p className="text-sm text-muted-foreground text-center">
+                {previewDays} day{previewDays > 1 ? "s" : ""} will be marked as leave
+              </p>
+            )}
+
             <div className="space-y-2">
               <Label className="text-foreground">Reason (optional)</Label>
               <Textarea
@@ -224,17 +322,21 @@ export default function EmployeeLeavesPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => { setShowMarkDialog(false); setLeaveDate(""); setLeaveReason(""); }}
+              onClick={resetDialog}
               className="border-border text-foreground"
             >
               Cancel
             </Button>
             <Button
               onClick={() => markMutation.mutate()}
-              disabled={!leaveDate || markMutation.isPending}
+              disabled={!canSubmit || markMutation.isPending}
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
-              {markMutation.isPending ? "Marking..." : "Mark Leave"}
+              {markMutation.isPending
+                ? "Marking..."
+                : leaveMode === "range" && previewDays > 1
+                ? `Mark ${previewDays} Days`
+                : "Mark Leave"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -31,9 +31,13 @@ export async function GET(request: NextRequest) {
         select: {
           id: true,
           name: true,
+          description: true,
+          clientName: true,
           color: true,
           status: true,
           estimatedHours: true,
+          startDate: true,
+          endDate: true,
           updatedAt: true,
           _count: { select: { subTasks: true, timeEntries: true } },
           projectLeaders: {

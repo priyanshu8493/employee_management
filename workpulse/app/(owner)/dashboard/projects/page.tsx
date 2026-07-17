@@ -299,6 +299,7 @@ export default function ProjectsPage() {
           <p className="text-muted-foreground mt-1">Manage your projects and tasks</p>
         </div>
         <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">Filter by:</span>
           <Select value={statusFilter} onValueChange={(v) => v && setStatusFilter(v)}>
             <SelectTrigger className="w-48 bg-surface border-border text-foreground">
               <SelectValue />

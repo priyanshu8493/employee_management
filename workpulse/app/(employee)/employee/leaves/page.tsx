@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/lib/utils";
-import { CalendarOff, Plus, Trash2, CalendarCheck } from "lucide-react";
+import { CalendarOff, Plus, Trash2, CalendarCheck, MessageSquare } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -181,6 +181,14 @@ export default function EmployeeLeavesPage() {
                     {leave.reason && (
                       <p className="text-sm text-muted-foreground">{leave.reason}</p>
                     )}
+                    {leave.remarks && (
+                      <div className="mt-1.5 p-2 rounded-md bg-primary/5 border border-primary/10">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mb-0.5">
+                          <MessageSquare className="h-3 w-3" /> Owner Remarks
+                        </p>
+                        <p className="text-sm text-foreground">{leave.remarks}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <Button
@@ -218,6 +226,14 @@ export default function EmployeeLeavesPage() {
                     <p className="font-medium text-foreground">{formatDate(leave.date)}</p>
                     {leave.reason && (
                       <p className="text-sm text-muted-foreground">{leave.reason}</p>
+                    )}
+                    {leave.remarks && (
+                      <div className="mt-1.5 p-2 rounded-md bg-primary/5 border border-primary/10">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mb-0.5">
+                          <MessageSquare className="h-3 w-3" /> Owner Remarks
+                        </p>
+                        <p className="text-sm text-foreground">{leave.remarks}</p>
+                      </div>
                     )}
                   </div>
                 </div>

@@ -1,16 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
-import { CalendarOff, Search } from "lucide-react";
+import { CalendarOff, Search, MessageSquare, Save } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export default function OwnerLeavesPage() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [remarksLeave, setRemarksLeave] = useState<any>(null);
+  const [remarksText, setRemarksText] = useState("");
 
   const { data: leaves, isLoading } = useQuery({
     queryKey: ["all-leaves"],
@@ -21,6 +35,28 @@ export default function OwnerLeavesPage() {
     },
     refetchInterval: 30000,
     staleTime: 10000,
+  });
+
+  const remarksMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/leaves/${remarksLeave.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ remarks: remarksText || null }),
+      });
+      const { data, error } = await res.json();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-leaves"] });
+      toast.success(remarksText ? "Remarks saved" : "Remarks removed");
+      setRemarksLeave(null);
+      setRemarksText("");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
   });
 
   const now = new Date();
@@ -129,23 +165,45 @@ export default function OwnerLeavesPage() {
                             {leave.reason}
                           </p>
                         )}
+                        {leave.remarks && (
+                          <div className="mt-2 p-2 rounded-md bg-primary/5 border border-primary/10">
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 mb-0.5">
+                              <MessageSquare className="h-3 w-3" /> Owner Remarks
+                            </p>
+                            <p className="text-sm text-foreground">{leave.remarks}</p>
+                          </div>
+                        )}
                       </div>
-                      <Badge
-                        variant="outline"
-                        className={
-                          new Date(leave.date) > now
-                            ? "border-primary/30 text-primary"
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <Badge
+                          variant="outline"
+                          className={
+                            new Date(leave.date) > now
+                              ? "border-primary/30 text-primary"
+                              : new Date(leave.date).toDateString() === now.toDateString()
+                              ? "border-warning/30 text-warning"
+                              : "border-border text-muted-foreground"
+                          }
+                        >
+                          {new Date(leave.date) > now
+                            ? "Upcoming"
                             : new Date(leave.date).toDateString() === now.toDateString()
-                            ? "border-warning/30 text-warning"
-                            : "border-border text-muted-foreground"
-                        }
-                      >
-                        {new Date(leave.date) > now
-                          ? "Upcoming"
-                          : new Date(leave.date).toDateString() === now.toDateString()
-                          ? "Today"
-                          : "Past"}
-                      </Badge>
+                            ? "Today"
+                            : "Past"}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            setRemarksLeave(leave);
+                            setRemarksText(leave.remarks || "");
+                          }}
+                        >
+                          <MessageSquare className="h-3 w-3 mr-1" />
+                          {leave.remarks ? "Edit Remarks" : "Add Remarks"}
+                        </Button>
+                      </div>
                     </div>
                   </Card>
                 ))}
@@ -166,6 +224,68 @@ export default function OwnerLeavesPage() {
           </div>
         </Card>
       )}
+
+      <Dialog open={!!remarksLeave} onOpenChange={(o) => { if (!o) { setRemarksLeave(null); setRemarksText(""); } }}>
+        <DialogContent className="bg-surface-raised border-border">
+          <DialogHeader>
+            <DialogTitle className="text-foreground flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-primary" />
+              {remarksLeave?.remarks ? "Edit Remarks" : "Add Remarks"}
+            </DialogTitle>
+          </DialogHeader>
+          {remarksLeave && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-surface border border-border">
+                <p className="text-sm font-medium text-foreground">{remarksLeave.user?.name}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(remarksLeave.date)}</p>
+                {remarksLeave.reason && (
+                  <p className="text-xs text-muted-foreground mt-1">Reason: {remarksLeave.reason}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">Remarks</Label>
+                <Textarea
+                  placeholder="Add your remarks about this leave..."
+                  value={remarksText}
+                  onChange={(e) => setRemarksText(e.target.value)}
+                  className="bg-surface border-border text-foreground placeholder:text-muted-foreground min-h-[100px]"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            {remarksLeave?.remarks && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRemarksText("");
+                  remarksMutation.mutate();
+                }}
+                disabled={remarksMutation.isPending}
+                className="border-danger text-danger hover:bg-danger/10"
+              >
+                Remove
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              onClick={() => { setRemarksLeave(null); setRemarksText(""); }}
+              className="border-border text-foreground"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => remarksMutation.mutate()}
+              disabled={remarksMutation.isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              {remarksMutation.isPending ? "Saving..." : (
+                <><Save className="h-4 w-4 mr-2" /> Save</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

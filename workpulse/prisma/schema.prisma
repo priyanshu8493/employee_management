@@ -215,6 +215,7 @@ model Leave {
   userId    String?
   date      DateTime
   reason    String?
+  remarks   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

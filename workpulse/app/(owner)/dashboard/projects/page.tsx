@@ -302,7 +302,7 @@ export default function ProjectsPage() {
           <span className="text-sm text-muted-foreground">Filter by:</span>
           <Select value={statusFilter} onValueChange={(v) => v && setStatusFilter(v)}>
             <SelectTrigger className="w-48 bg-surface border-border text-foreground">
-              <SelectValue />
+              <SelectValue labels={{ ALL: "Status: All", ACTIVE: "Status: Active", ON_HOLD: "Status: On Hold", COMPLETED: "Status: Completed", ARCHIVED: "Status: Archived" }} />
             </SelectTrigger>
             <SelectContent className="bg-surface-raised border-border">
               <SelectItem value="ALL">Status: All</SelectItem>
@@ -314,7 +314,7 @@ export default function ProjectsPage() {
           </Select>
           <Select value={clientFilter} onValueChange={(v) => v && setClientFilter(v)}>
             <SelectTrigger className="w-52 bg-surface border-border text-foreground">
-              <SelectValue />
+              <SelectValue labels={{ ALL: "Client: All", ...Object.fromEntries(clientNames.map((n: string) => [n, `Client: ${n}`])) }} />
             </SelectTrigger>
             <SelectContent className="bg-surface-raised border-border">
               <SelectItem value="ALL">Client: All</SelectItem>

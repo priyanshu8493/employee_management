@@ -33,7 +33,7 @@ function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   )
 }
 
-function SelectValue({ className, children, placeholder, ...props }: SelectPrimitive.Value.Props) {
+function SelectValue({ className, children, placeholder, labels, ...props }: SelectPrimitive.Value.Props & { labels?: Record<string, string> }) {
   const labelMap = React.useContext(SelectLabelContext);
 
   return (
@@ -47,7 +47,7 @@ function SelectValue({ className, children, placeholder, ...props }: SelectPrimi
         if (value === null) {
           return placeholder ?? "";
         }
-        const label = labelMap.get(String(value));
+        const label = labels?.[String(value)] ?? labelMap.get(String(value));
         return label ?? String(value);
       }}
     </SelectPrimitive.Value>

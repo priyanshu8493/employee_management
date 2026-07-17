@@ -3,6 +3,14 @@ import { apiSuccess, handleApiError, requireRole } from "@/lib/api-utils";
 
 export const runtime = "nodejs";
 
+function hasProjectAndSubTask(entry: { projectId?: string | null; subTaskId?: string | null }): boolean {
+  return !!entry.projectId && !!entry.subTaskId;
+}
+
+function hasProjectRelation(entry: { project?: unknown; subTask?: unknown }): boolean {
+  return !!entry.project && !!entry.subTask;
+}
+
 export async function GET() {
   try {
     await requireRole("OWNER");
@@ -20,14 +28,14 @@ export async function GET() {
     weekEnd.setDate(weekEnd.getDate() + 6);
     weekEnd.setHours(23, 59, 59, 999);
 
-    const [activeEmployees, weekEntries, projectsOverEstimate, completedThisMonth, projects, todayEntries, todayLeaves, weekTimeEntries] = await Promise.all([
+    const [activeEmployees, allWeekEntries, projectsOverEstimate, completedThisMonth, projects, allTodayEntries, todayLeaves, allWeekTimeEntries] = await Promise.all([
       prisma.timeEntry.count({
         where: { checkOutAt: null },
       }),
 
-      prisma.timeEntry.aggregate({
+      prisma.timeEntry.findMany({
         where: { checkInAt: { gte: startOfWeek }, durationMinutes: { not: null } },
-        _sum: { durationMinutes: true },
+        select: { projectId: true, subTaskId: true, durationMinutes: true },
       }),
 
       prisma.project.findMany({
@@ -95,10 +103,18 @@ export async function GET() {
         select: {
           checkInAt: true,
           durationMinutes: true,
+          projectId: true,
+          subTaskId: true,
           project: { select: { id: true, name: true, color: true } },
         },
       }),
     ]);
+
+    const weekEntries = allWeekEntries.filter(hasProjectAndSubTask);
+    const todayEntries = allTodayEntries.filter(hasProjectRelation);
+    const weekTimeEntries = allWeekTimeEntries.filter((e) => hasProjectAndSubTask(e) && !!e.project);
+
+    const weekMinutes = weekEntries.reduce((sum, e) => sum + (e.durationMinutes || 0), 0);
 
     const projectsWithTime = await prisma.timeEntry.groupBy({
       by: ["projectId"],
@@ -107,7 +123,9 @@ export async function GET() {
     });
     const timeByProject = new Map<string, number>();
     for (const agg of projectsWithTime) {
-      timeByProject.set(agg.projectId, agg._sum.durationMinutes || 0);
+      if (agg.projectId) {
+        timeByProject.set(agg.projectId, agg._sum?.durationMinutes || 0);
+      }
     }
 
     const overEstimateCount = projectsOverEstimate.filter((p) => {
@@ -167,7 +185,7 @@ export async function GET() {
     return apiSuccess({
       kpi: {
         activeEmployeesNow: activeEmployees,
-        weekHours: Math.round(((weekEntries._sum.durationMinutes || 0) / 60) * 10) / 10,
+        weekHours: Math.round((weekMinutes / 60) * 10) / 10,
         projectsOverEstimate: overEstimateCount,
         projectsCompletedThisMonth: completedThisMonth,
       },

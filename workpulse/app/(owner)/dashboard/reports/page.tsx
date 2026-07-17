@@ -107,7 +107,6 @@ export default function ReportsPage() {
 
   const employeeColumns = [
     { key: "name", header: "Employee", sortable: true, render: (e: any) => <span className="font-medium">{e.name}</span> },
-    { key: "team", header: "Team", render: (e: any) => <span className="text-muted-foreground">{e.team?.name || "--"}</span> },
     { key: "totalHours", header: "Total Hours", sortable: true, render: (e: any) => <span>{e.totalHours}h</span> },
     {
       key: "breakdown",

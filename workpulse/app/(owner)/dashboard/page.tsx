@@ -87,13 +87,6 @@ export default function DashboardOverviewPage() {
       ),
     },
     {
-      key: "team",
-      header: "Team",
-      render: (entry: any) => (
-        <span className="text-muted-foreground">{entry.user?.team?.name || "--"}</span>
-      ),
-    },
-    {
       key: "isActive",
       header: "Status",
       render: (entry: any) => (
@@ -202,7 +195,7 @@ export default function DashboardOverviewPage() {
                 </Avatar>
                 <div>
                   <p className="text-sm font-medium text-foreground">{leave.user?.name}</p>
-                  <p className="text-xs text-muted-foreground">{leave.user?.team?.name || "No team"}</p>
+                  <p className="text-xs text-muted-foreground">{leave.user?.email}</p>
                 </div>
               </div>
             ))}

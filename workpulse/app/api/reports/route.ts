@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     if (projectIds?.length) timeEntryWhere.projectId = { in: projectIds };
     if (employeeIds?.length) timeEntryWhere.userId = { in: employeeIds };
 
-    const [employeeHours, projectHours, subTaskHours, allUsers, allProjects, allSubTasks] = await Promise.all([
+    const [allEmployeeHours, allProjectHours, allSubTaskHours, allUsers, allProjects, allSubTasks] = await Promise.all([
       prisma.timeEntry.groupBy({
         by: ["userId"],
         where: { ...timeEntryWhere, durationMinutes: { not: null } },
@@ -51,6 +51,10 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+    const employeeHours = allEmployeeHours.filter((e) => !!e.userId);
+    const projectHours = allProjectHours.filter((p) => !!p.projectId);
+    const subTaskHours = allSubTaskHours.filter((s) => !!s.userId && !!s.projectId && !!s.subTaskId);
+
     const userMap = new Map(allUsers.map((u) => [u.id, u]));
     const projectMap = new Map(allProjects.map((p) => [p.id, p]));
     const subTaskMap = new Map(allSubTasks.map((s) => [s.id, s]));
@@ -60,15 +64,16 @@ export async function GET(request: NextRequest) {
       totalHours: number;
       projectBreakdown: Array<{ id?: string; name?: string; color?: string; hours: number }>;
     }> = employeeHours
-      .filter((e) => e.userId && userMap.has(e.userId))
       .map((e) => {
-        const user = userMap.get(e.userId!)!;
+        const user = userMap.get(e.userId!);
+        if (!user) return null;
         return {
           ...user,
-          totalHours: Math.round(((e._sum.durationMinutes || 0) / 60) * 10) / 10,
+          totalHours: Math.round(((e._sum?.durationMinutes || 0) / 60) * 10) / 10,
           projectBreakdown: [] as Array<{ id?: string; name?: string; color?: string; hours: number }>,
         };
-      });
+      })
+      .filter(Boolean) as any;
 
     const empProjectBreakdowns = await prisma.timeEntry.groupBy({
       by: ["userId", "projectId"],
@@ -79,10 +84,10 @@ export async function GET(request: NextRequest) {
     for (const emp of employeesWithTime) {
       if (!emp?.id) continue;
       emp.projectBreakdown = empProjectBreakdowns
-        .filter((pb) => pb.userId === emp.id)
+        .filter((pb) => pb.userId === emp.id && !!pb.projectId)
         .map((pb) => {
           const proj = projectMap.get(pb.projectId);
-          return { ...proj, hours: Math.round(((pb._sum.durationMinutes || 0) / 60) * 10) / 10 };
+          return { ...proj, hours: Math.round(((pb._sum?.durationMinutes || 0) / 60) * 10) / 10 };
         });
     }
 
@@ -92,7 +97,7 @@ export async function GET(request: NextRequest) {
       employeeBreakdown: Array<{ id?: string; name?: string; hours: number }>;
     }> = projectHours.map((p) => {
       const proj = projectMap.get(p.projectId);
-      const totalHours = (p._sum.durationMinutes || 0) / 60;
+      const totalHours = (p._sum?.durationMinutes || 0) / 60;
       return {
         ...proj,
         totalHours: Math.round(totalHours * 10) / 10,
@@ -112,27 +117,38 @@ export async function GET(request: NextRequest) {
     for (const proj of projectsWithTime) {
       if (!proj?.id) continue;
       proj.employeeBreakdown = projEmpBreakdowns
-        .filter((pb) => pb.projectId === proj.id && pb.userId)
+        .filter((pb) => pb.projectId === proj.id && !!pb.userId)
         .map((pb) => {
           const user = userMap.get(pb.userId!);
-          return { id: user?.id, name: user?.name, hours: Math.round(((pb._sum.durationMinutes || 0) / 60) * 10) / 10 };
+          return { id: user?.id, name: user?.name, hours: Math.round(((pb._sum?.durationMinutes || 0) / 60) * 10) / 10 };
         });
     }
 
     const subTasksWithTime = subTaskHours
-      .filter((s) => s.userId)
       .map((s) => ({
         project: projectMap.get(s.projectId),
         subtask: subTaskMap.get(s.subTaskId),
         employee: userMap.get(s.userId!),
-        totalHours: Math.round(((s._sum.durationMinutes || 0) / 60) * 10) / 10,
+        totalHours: Math.round(((s._sum?.durationMinutes || 0) / 60) * 10) / 10,
       }));
+
+    const heatmapMinutes = await prisma.timeEntry.groupBy({
+      by: ["checkInAt"],
+      where: { ...timeEntryWhere, durationMinutes: { not: null } },
+      _sum: { durationMinutes: true },
+    });
+
+    const heatmap: Record<string, number> = {};
+    for (const entry of heatmapMinutes) {
+      const day = new Date(entry.checkInAt).toISOString().split("T")[0];
+      heatmap[day] = (heatmap[day] || 0) + (entry._sum?.durationMinutes || 0);
+    }
 
     return apiSuccess({
       employeeHours: employeesWithTime,
       projectHours: projectsWithTime,
       subTaskHours: subTasksWithTime,
-      heatmap: {},
+      heatmap,
     });
   } catch (error) {
     return handleApiError(error);

@@ -38,8 +38,7 @@ export default function TeamTasksPage() {
   const { data: teamMembers } = useQuery({
     queryKey: ["team-members"],
     queryFn: async () => {
-      if (!session?.user?.teamId) return [];
-      const res = await fetch(`/api/employees?teamId=${session.user.teamId}`);
+      const res = await fetch(`/api/employees`);
       const { data } = await res.json();
       return data || [];
     },

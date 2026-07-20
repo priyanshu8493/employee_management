@@ -79,6 +79,7 @@ export async function GET() {
           checkInAt: true,
           checkOutAt: true,
           durationMinutes: true,
+          totalPauseMs: true,
           user: { select: { id: true, name: true, email: true, avatarUrl: true } },
           project: { select: { id: true, name: true, color: true } },
           subTask: { select: { id: true, name: true } },
@@ -145,16 +146,19 @@ export async function GET() {
       };
     });
 
-    const todayMap = new Map<string, typeof todayEntries[0] & { hoursToday: number; isActive: boolean }>();
+    const todayMap = new Map<string, typeof todayEntries[0] & { hoursToday: number; breakMinutes: number; isActive: boolean }>();
     for (const entry of todayEntries) {
       if (!entry.user) continue;
       const existing = todayMap.get(entry.user.id);
+      const breakMs = entry.totalPauseMs || 0;
       if (existing) {
         existing.hoursToday += entry.durationMinutes || 0;
+        existing.breakMinutes += Math.round(breakMs / 60000);
       } else {
         todayMap.set(entry.user.id, {
           ...entry,
           hoursToday: entry.durationMinutes || 0,
+          breakMinutes: Math.round(breakMs / 60000),
           isActive: !entry.checkOutAt,
         });
       }

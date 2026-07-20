@@ -118,13 +118,31 @@ export async function POST(request: NextRequest) {
       }
 
       const now = new Date();
-      const durationMinutes = Math.round((now.getTime() - entry.checkInAt.getTime()) / 60000);
+      const totalPauseMs = entry.totalPauseMs || 0;
+      const rawDurationMs = now.getTime() - entry.checkInAt.getTime();
+      const activeDurationMs = Math.max(rawDurationMs - totalPauseMs, 0);
+      const durationMinutes = Math.round(activeDurationMs / 60000);
+
+      // Close any still-open pause
+      const openPause = await prisma.timeEntryPause.findFirst({
+        where: { timeEntryId: entry.id, resumedAt: null },
+        orderBy: { pausedAt: "desc" },
+      });
+      if (openPause) {
+        const openDurationMs = now.getTime() - openPause.pausedAt.getTime();
+        await prisma.timeEntryPause.update({
+          where: { id: openPause.id },
+          data: { resumedAt: now, durationMs: openDurationMs },
+        });
+      }
 
       const updated = await prisma.timeEntry.update({
         where: { id: parsed.timeEntryId },
         data: {
           checkOutAt: now,
           durationMinutes,
+          totalPauseMs: totalPauseMs + (openPause ? (now.getTime() - openPause.pausedAt.getTime()) : 0),
+          pausedAt: null,
           notes: parsed.notes !== undefined ? parsed.notes : entry.notes,
         },
         include: {

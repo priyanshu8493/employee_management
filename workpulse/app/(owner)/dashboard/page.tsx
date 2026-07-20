@@ -27,7 +27,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { formatDurationShort } from "@/lib/utils";
+import { formatDuration, formatDurationShort } from "@/lib/utils";
 
 const COLORS = ["#6C63FF", "#22C55E", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4"];
 
@@ -128,6 +128,14 @@ export default function DashboardOverviewPage() {
       sortable: true,
       render: (entry: any) => (
         <span className="font-medium">{formatDurationShort(entry.hoursToday)}</span>
+      ),
+    },
+    {
+      key: "breakMinutes",
+      header: "Break",
+      sortable: true,
+      render: (entry: any) => (
+        <span className="text-muted-foreground">{formatDuration(entry.breakMinutes)}</span>
       ),
     },
   ];

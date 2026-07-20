@@ -18,7 +18,10 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = {};
 
     if (session.user.role !== "OWNER") {
-      where.projectLeaders = { some: { userId: session.user.id } };
+      where.OR = [
+        { projectLeaders: { some: { userId: session.user.id } } },
+        { subTasks: { some: { assignments: { some: { userId: session.user.id } } } } },
+      ];
     }
 
     if (status) where.status = status;

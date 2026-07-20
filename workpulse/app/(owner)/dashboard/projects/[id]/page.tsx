@@ -93,8 +93,8 @@ export default function ProjectDetailPage() {
     staleTime: 30000,
   });
 
-  const { data: timeEntries } = useQuery({
-    queryKey: ["project-time-entries", id],
+  const { data: timeLogEntries } = useQuery({
+    queryKey: ["project-time-log", id],
     queryFn: async () => {
       const res = await fetch(`/api/time-entries?projectId=${id}&limit=500`);
       const { data } = await res.json();
@@ -228,15 +228,16 @@ export default function ProjectDetailPage() {
     );
   }
 
-  const totalMinutes = (timeEntries || []).reduce((s: number, e: any) => s + (e.durationMinutes || 0), 0);
+  const completedEntries = (project.timeEntries || []) as { durationMinutes: number }[];
+  const totalMinutes = completedEntries.reduce((s, e) => s + (e.durationMinutes || 0), 0);
   const totalHours = Math.round((totalMinutes / 60) * 10) / 10;
   const progressPercent = project.estimatedHours > 0
     ? Math.min((totalHours / project.estimatedHours) * 100, 999)
     : 0;
 
-  // Daily hours for burndown chart
+  // Daily hours for burndown chart (use timeLogEntries for full date info)
   const dailyHours: Record<string, number> = {};
-  (timeEntries || []).forEach((e: any) => {
+  (timeLogEntries || []).forEach((e: any) => {
     const day = new Date(e.checkInAt).toISOString().split("T")[0];
     dailyHours[day] = (dailyHours[day] || 0) + (e.durationMinutes || 0);
   });
@@ -684,7 +685,7 @@ export default function ProjectDetailPage() {
         <TabsContent value="timelog">
           <DataTable
             columns={timeColumns}
-            data={timeEntries || []}
+            data={timeLogEntries || []}
             searchable
             searchPlaceholder="Search entries..."
             pageSize={20}

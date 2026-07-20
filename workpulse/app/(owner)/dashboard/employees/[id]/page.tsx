@@ -439,7 +439,7 @@ export default function EmployeeDetailPage() {
                 className="border-border text-foreground"
                 onClick={() => setShowAddLeave(true)}
               >
-                <Plus className="h-3.5 w-3.5 mr-1" /> Add Backdated Leave
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add Past Leave
               </Button>
               <Button
                 variant="outline"
@@ -530,7 +530,7 @@ export default function EmployeeDetailPage() {
           <DialogHeader>
             <DialogTitle className="text-foreground flex items-center gap-2">
               <CalendarDays className="h-5 w-5 text-warning" />
-              Add Backdated Leave for {employee?.name}
+              Add Past Leave for {employee?.name}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">

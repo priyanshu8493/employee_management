@@ -30,7 +30,7 @@ export default function TeamTasksPage() {
     queryFn: async () => {
       const res = await fetch("/api/projects");
       const { data } = await res.json();
-      return data || [];
+      return data?.projects || [];
     },
     staleTime: 30000,
   });

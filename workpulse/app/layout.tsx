@@ -11,6 +11,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "WorkPulse - Time Tracking & Project Management",
   description: "Enterprise time tracking and project management platform",
+  icons: {
+    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%236C63FF'/><text x='16' y='22' text-anchor='middle' font-family='system-ui' font-weight='bold' font-size='18' fill='white'>W</text></svg>",
+  },
 };
 
 export default function RootLayout({

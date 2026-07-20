@@ -31,13 +31,35 @@ import { format } from "date-fns";
 import { formatDuration, formatDurationShort } from "@/lib/utils";
 
 function LiveTimer({ checkInAt, totalPauseMs, pausedAt }: { checkInAt: string; totalPauseMs: number; pausedAt: string | null }) {
+  const startRef = useRef(new Date(checkInAt).getTime());
   const [elapsed, setElapsed] = useState("00:00:00");
+  const [snapshot, setSnapshot] = useState<string | null>(null);
 
   useEffect(() => {
-    const start = new Date(checkInAt).getTime();
+    startRef.current = new Date(checkInAt).getTime();
+    setSnapshot(null);
+  }, [checkInAt]);
+
+  useEffect(() => {
+    if (pausedAt) {
+      const pauseStart = new Date(pausedAt).getTime();
+      const rawDiff = Math.floor((pauseStart - startRef.current) / 1000);
+      const pauseSeconds = Math.floor(totalPauseMs / 1000);
+      const activeSeconds = Math.max(rawDiff - pauseSeconds, 0);
+      const h = Math.floor(activeSeconds / 3600);
+      const m = Math.floor((activeSeconds % 3600) / 60);
+      const s = activeSeconds % 60;
+      setSnapshot(
+        `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+      );
+    }
+  }, [pausedAt, checkInAt, totalPauseMs]);
+
+  useEffect(() => {
+    if (snapshot) return;
     const tick = () => {
       const now = Date.now();
-      const rawDiff = Math.floor((now - start) / 1000);
+      const rawDiff = Math.floor((now - startRef.current) / 1000);
       const pauseSeconds = Math.floor(totalPauseMs / 1000);
       const activeSeconds = Math.max(rawDiff - pauseSeconds, 0);
       const h = Math.floor(activeSeconds / 3600);
@@ -50,19 +72,37 @@ function LiveTimer({ checkInAt, totalPauseMs, pausedAt }: { checkInAt: string; t
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [checkInAt, totalPauseMs]);
-
-  if (pausedAt) {
-    return (
-      <div className="flex flex-col gap-1">
-        <span className="font-mono text-2xl tabular-nums text-muted-foreground">{elapsed}</span>
-        <span className="text-xs text-warning font-medium">PAUSED</span>
-      </div>
-    );
-  }
+  }, [checkInAt, totalPauseMs, snapshot]);
 
   return (
-    <span className="font-mono text-2xl tabular-nums">{elapsed}</span>
+    <span className="font-mono text-2xl tabular-nums">{snapshot || elapsed}</span>
+  );
+}
+
+function BreakTimer({ pausedAt }: { pausedAt: string }) {
+  const [elapsed, setElapsed] = useState("00:00:00");
+
+  useEffect(() => {
+    const pauseStart = new Date(pausedAt).getTime();
+    const tick = () => {
+      const diff = Math.floor((Date.now() - pauseStart) / 1000);
+      const h = Math.floor(diff / 3600);
+      const m = Math.floor((diff % 3600) / 60);
+      const s = diff % 60;
+      setElapsed(
+        `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+      );
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [pausedAt]);
+
+  return (
+    <div className="flex items-center gap-2 text-warning">
+      <span className="text-xs font-medium">Break:</span>
+      <span className="font-mono text-base tabular-nums">{elapsed}</span>
+    </div>
   );
 }
 
@@ -440,9 +480,12 @@ export default function EmployeeHomePage() {
                 Since {format(new Date(activeSession.checkInAt), "h:mm a")}
               </p>
               {activeSession.pausedAt && (
-                <p className="text-xs text-warning">
-                  Paused at {format(new Date(activeSession.pausedAt), "h:mm a")}
-                </p>
+                <div className="space-y-1">
+                  <BreakTimer pausedAt={activeSession.pausedAt} />
+                  <p className="text-xs text-warning">
+                    Paused at {format(new Date(activeSession.pausedAt), "h:mm a")}
+                  </p>
+                </div>
               )}
             </div>
             <div className="flex items-center gap-2">

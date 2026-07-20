@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
-import { CalendarOff, Search, MessageSquare, Save } from "lucide-react";
+import { CalendarOff, Search, MessageSquare, Save, ChevronLeft, ChevronRight } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -19,12 +19,20 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function OwnerLeavesPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [remarksLeave, setRemarksLeave] = useState<any>(null);
   const [remarksText, setRemarksText] = useState("");
+  const [monthFilter, setMonthFilter] = useState("thisMonth");
 
   const { data: leaves, isLoading } = useQuery({
     queryKey: ["all-leaves"],
@@ -36,6 +44,53 @@ export default function OwnerLeavesPage() {
     refetchInterval: 30000,
     staleTime: 10000,
   });
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const monthOptions = useMemo(() => {
+    const options: { label: string; start: Date; end: Date }[] = [];
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const start = new Date(d.getFullYear(), d.getMonth(), 1);
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+      const label = d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+      options.push({ label, start, end });
+    }
+    return options;
+  }, []);
+
+  const filteredLeaves = useMemo(() => {
+    let items = leaves || [];
+
+    if (monthFilter === "all") {
+      // no date filter
+    } else if (monthFilter === "today") {
+      items = items.filter((l: any) => new Date(l.date).getTime() === todayStart.getTime());
+    } else if (monthFilter === "upcoming") {
+      items = items.filter((l: any) => new Date(l.date) > todayStart);
+    } else if (monthFilter === "past") {
+      items = items.filter((l: any) => new Date(l.date) < todayStart);
+    } else {
+      const opt = monthOptions[parseInt(monthFilter)];
+      if (opt) {
+        items = items.filter((l: any) => {
+          const d = new Date(l.date);
+          return d >= opt.start && d <= opt.end;
+        });
+      }
+    }
+
+    if (search) {
+      items = items.filter((l: any) =>
+        l.user?.name?.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    items.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return items;
+  }, [leaves, monthFilter, search, todayStart, monthOptions]);
 
   const remarksMutation = useMutation({
     mutationFn: async () => {
@@ -59,42 +114,6 @@ export default function OwnerLeavesPage() {
     },
   });
 
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  const todayLeaves = (leaves || []).filter((l: any) => {
-    const d = new Date(l.date);
-    return d.getTime() === todayStart.getTime();
-  });
-
-  const upcomingLeaves = (leaves || []).filter((l: any) => {
-    const d = new Date(l.date);
-    return d > todayStart;
-  }).sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-  const pastLeaves = (leaves || []).filter((l: any) => {
-    const d = new Date(l.date);
-    return d < todayStart;
-  });
-
-  const filteredUpcoming = upcomingLeaves.filter((l: any) =>
-    l.user?.name?.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const visibleLeaves = search
-    ? [...todayLeaves, ...filteredUpcoming, ...pastLeaves].filter((l: any) =>
-        l.user?.name?.toLowerCase().includes(search.toLowerCase())
-      )
-    : leaves || [];
-
-  const grouped = search
-    ? { "All Leaves": visibleLeaves }
-    : {
-        "On Leave Today": todayLeaves,
-        "Upcoming Leaves": upcomingLeaves,
-        "Past Leaves": pastLeaves,
-      };
-
   return (
     <div className="space-y-8">
       <div>
@@ -104,14 +123,35 @@ export default function OwnerLeavesPage() {
         </p>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search by employee name..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 bg-surface border-border text-foreground placeholder:text-muted-foreground max-w-sm"
-        />
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by employee name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 bg-surface border-border text-foreground placeholder:text-muted-foreground"
+          />
+        </div>
+        <Select
+          value={monthFilter}
+          onValueChange={(v) => v && setMonthFilter(v)}
+        >
+          <SelectTrigger className="w-52 bg-surface border-border text-foreground">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="bg-surface-raised border-border max-h-72">
+            <SelectItem value="thisMonth">This Month</SelectItem>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="upcoming">Upcoming</SelectItem>
+            <SelectItem value="all">All Leaves</SelectItem>
+            <SelectItem value="past">All Past Leaves</SelectItem>
+            <div className="border-t border-border my-1" />
+            {monthOptions.map((opt, i) => (
+              <SelectItem key={i} value={String(i)}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {isLoading ? (
@@ -120,26 +160,32 @@ export default function OwnerLeavesPage() {
             <div key={i} className="h-20 bg-surface-raised rounded-xl animate-pulse" />
           ))}
         </div>
-      ) : visibleLeaves.length === 0 && search ? (
+      ) : filteredLeaves.length === 0 ? (
         <Card className="border border-border p-8 rounded-xl">
           <div className="text-center">
             <CalendarOff className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">No leaves match your search</p>
+            <p className="text-muted-foreground">No leaves match your filter</p>
           </div>
         </Card>
       ) : (
-        Object.entries(grouped).map(([sectionTitle, sectionLeaves]) =>
-          sectionLeaves.length > 0 && (
-            <div key={sectionTitle}>
-              <div className="flex items-center gap-2 mb-4">
-                <CalendarOff className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">{sectionTitle}</h2>
-                <Badge variant="secondary" className="bg-primary/10 text-primary border-0">
-                  {sectionLeaves.length}
-                </Badge>
-              </div>
-              <div className="space-y-2 mb-8">
-                {(sectionLeaves as any[]).map((leave: any) => (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CalendarOff className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold text-foreground">
+                {monthFilter === "thisMonth" ? "This Month" :
+                 monthFilter === "today" ? "Today" :
+                 monthFilter === "upcoming" ? "Upcoming" :
+                 monthFilter === "all" ? "All Leaves" :
+                 monthFilter === "past" ? "All Past Leaves" :
+                 monthOptions[parseInt(monthFilter)]?.label || "Leaves"}
+              </h2>
+              <Badge variant="secondary" className="bg-primary/10 text-primary border-0">
+                {filteredLeaves.length}
+              </Badge>
+            </div>
+          </div>
+          {filteredLeaves.map((leave: any) => (
                   <Card
                     key={leave.id}
                     className="border border-border p-4 rounded-xl hover:border-primary/30 transition-colors"
@@ -204,11 +250,8 @@ export default function OwnerLeavesPage() {
                     </div>
                   </Card>
                 ))}
-              </div>
             </div>
-          )
-        )
-      )}
+          )}
 
       {!isLoading && leaves?.length === 0 && (
         <Card className="border border-border p-8 rounded-xl">

@@ -11,19 +11,21 @@ export async function GET(request: NextRequest) {
     if (!session?.user?.id) return apiError("Unauthorized", "UNAUTHORIZED", 401);
 
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId") || session.user.id;
+    const paramUserId = searchParams.get("userId");
     const projectId = searchParams.get("projectId");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
 
-    // Employees can only see their own entries
-    if (session.user.role === "EMPLOYEE" && userId !== session.user.id) {
-      return apiError("Forbidden", "FORBIDDEN", 403);
-    }
+    const where: Record<string, unknown> = {};
 
-    const where: Record<string, unknown> = { userId };
+    if (session.user.role === "EMPLOYEE") {
+      // Employees can only see their own entries
+      where.userId = session.user.id;
+    } else if (paramUserId) {
+      where.userId = paramUserId;
+    }
     if (projectId) where.projectId = projectId;
     if (startDate) where.checkInAt = { gte: new Date(startDate) };
     if (endDate) {

@@ -68,9 +68,10 @@ export default function ReportsPage() {
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
 
-  const range = preset === "custom"
+  const range = useMemo(() => preset === "custom"
     ? { start: customStart ? new Date(customStart).toISOString() : "", end: customEnd ? new Date(customEnd + "T23:59:59").toISOString() : "" }
-    : PRESETS[preset]?.getRange() || { start: "", end: "" };
+    : PRESETS[preset]?.getRange() || { start: "", end: "" },
+  [preset, customStart, customEnd]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["reports", range.start, range.end],

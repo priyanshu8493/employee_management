@@ -262,7 +262,6 @@ export default function DashboardOverviewPage() {
                     color: "#F1F5F9",
                   }}
                 />
-                <Legend wrapperStyle={{ color: "#94A3B8", fontSize: "12px" }} />
                 {projectNames.slice(0, 6).map((name, i) => (
                   <Bar
                     key={name}
@@ -274,6 +273,17 @@ export default function DashboardOverviewPage() {
                 ))}
               </BarChart>
             </ResponsiveContainer>
+          </div>
+          <div className="flex flex-col gap-1.5 mt-4">
+            {projectNames.slice(0, 6).map((name, i) => (
+              <div key={name} className="flex items-center gap-2">
+                <div
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                />
+                <span className="text-xs text-muted-foreground">{name}</span>
+              </div>
+            ))}
           </div>
         </Card>
       </div>

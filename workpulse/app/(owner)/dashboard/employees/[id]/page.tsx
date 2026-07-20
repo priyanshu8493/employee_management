@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, UserCheck, UserX, AlertTriangle, Trash2, CalendarDays } from "lucide-react";
+import { ArrowLeft, UserCheck, UserX, AlertTriangle, Trash2, CalendarDays, Plus } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -33,6 +33,13 @@ import {
   Cell,
 } from "recharts";
 import { formatDurationShort, formatDuration, formatDate } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const COLORS = ["#6C63FF", "#22C55E", "#F59E0B", "#EF4444", "#8B5CF6"];
 
@@ -74,6 +81,9 @@ export default function EmployeeDetailPage() {
   });
 
   const [leaveYear, setLeaveYear] = useState(new Date().getFullYear());
+  const [showAddLeave, setShowAddLeave] = useState(false);
+  const [addLeaveDate, setAddLeaveDate] = useState("");
+  const [addLeaveReason, setAddLeaveReason] = useState("");
 
   const { data: leaveStats } = useQuery({
     queryKey: ["employee-leave-stats", id, leaveYear],
@@ -97,6 +107,31 @@ export default function EmployeeDetailPage() {
       toast.success("Employee deleted");
       setDeleteId(null);
       router.push("/dashboard/employees");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const addLeaveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/leaves/owner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: id,
+          date: addLeaveDate,
+          reason: addLeaveReason || undefined,
+        }),
+      });
+      const { data, error } = await res.json();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employee-leave-stats", id, leaveYear] });
+      toast.success("Backdated leave added");
+      setShowAddLeave(false);
+      setAddLeaveDate("");
+      setAddLeaveReason("");
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -402,6 +437,14 @@ export default function EmployeeDetailPage() {
                 variant="outline"
                 size="sm"
                 className="border-border text-foreground"
+                onClick={() => setShowAddLeave(true)}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add Backdated Leave
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-border text-foreground"
                 onClick={() => setLeaveYear((y) => y - 1)}
               >
                 &larr;
@@ -481,6 +524,53 @@ export default function EmployeeDetailPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={showAddLeave} onOpenChange={(o) => { if (!o) { setShowAddLeave(false); setAddLeaveDate(""); setAddLeaveReason(""); } }}>
+        <DialogContent className="bg-surface-raised border-border">
+          <DialogHeader>
+            <DialogTitle className="text-foreground flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 text-warning" />
+              Add Backdated Leave for {employee?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-foreground">Date *</Label>
+              <Input
+                type="date"
+                value={addLeaveDate}
+                onChange={(e) => setAddLeaveDate(e.target.value)}
+                className="bg-surface border-border text-foreground"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-foreground">Reason (optional)</Label>
+              <Input
+                value={addLeaveReason}
+                onChange={(e) => setAddLeaveReason(e.target.value)}
+                className="bg-surface border-border text-foreground placeholder:text-muted-foreground"
+                placeholder="Sick leave, personal, etc."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setShowAddLeave(false); setAddLeaveDate(""); setAddLeaveReason(""); }}
+              className="border-border text-foreground"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => addLeaveMutation.mutate()}
+              disabled={!addLeaveDate || addLeaveMutation.isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              {addLeaveMutation.isPending ? "Adding..." : "Add Leave"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={!!deleteId}

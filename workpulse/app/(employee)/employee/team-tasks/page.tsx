@@ -210,34 +210,38 @@ export default function TeamTasksPage() {
       )}
 
       <Dialog open={!!assignSubtask} onOpenChange={() => setAssignSubtask(null)}>
-        <DialogContent className="bg-surface-raised border-border max-w-md">
+        <DialogContent className="bg-surface-raised border-border max-w-md max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-foreground">Assign Members</DialogTitle>
           </DialogHeader>
           {assignSubtask && (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">{assignSubtask.name}</p>
-              {(!teamMembers || teamMembers.length === 0) ? (
-                <p className="text-muted-foreground text-sm text-center py-4">No team members available</p>
-              ) : (
-                teamMembers.map((m: any) => (
-                  <label
-                    key={m.id}
-                    className="flex items-center gap-2.5 p-2.5 rounded-lg hover:bg-surface cursor-pointer"
-                  >
-                    <Checkbox
-                      checked={assignSelectedIds.includes(m.id)}
-                      onCheckedChange={(checked) => {
-                        setAssignSelectedIds((prev) =>
-                          checked ? [...prev, m.id] : prev.filter((id) => id !== m.id)
-                        );
-                      }}
-                    />
-                    <span className="text-sm font-medium text-foreground">{m.name}</span>
-                  </label>
-                ))
-              )}
-              <div className="flex justify-end gap-3 pt-2">
+            <div className="flex flex-col min-h-0 flex-1">
+              <p className="text-sm text-muted-foreground mb-3">{assignSubtask.name}</p>
+              <div className="overflow-y-auto flex-1 min-h-0 -mx-6 px-6">
+                {(!teamMembers || teamMembers.length === 0) ? (
+                  <p className="text-muted-foreground text-sm text-center py-4">No team members available</p>
+                ) : (
+                  <div className="space-y-1">
+                    {teamMembers.map((m: any) => (
+                      <label
+                        key={m.id}
+                        className="flex items-center gap-2.5 p-2.5 rounded-lg hover:bg-surface cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={assignSelectedIds.includes(m.id)}
+                          onCheckedChange={(checked) => {
+                            setAssignSelectedIds((prev) =>
+                              checked ? [...prev, m.id] : prev.filter((id) => id !== m.id)
+                            );
+                          }}
+                        />
+                        <span className="text-sm font-medium text-foreground">{m.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-border -mx-6 px-6">
                 <Button variant="outline" onClick={() => setAssignSubtask(null)} className="border-border text-foreground">
                   Cancel
                 </Button>

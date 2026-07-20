@@ -144,6 +144,67 @@ export async function POST(request: NextRequest) {
       return apiSuccess(updated);
     }
 
+    if (body.action === "pause") {
+      const entry = await prisma.timeEntry.findFirst({
+        where: { id: body.timeEntryId, userId: session.user.id, checkOutAt: null, pausedAt: null },
+      });
+      if (!entry) {
+        return apiError("Active unpaused time entry not found", "NOT_FOUND", 404);
+      }
+
+      const pause = await prisma.timeEntryPause.create({
+        data: {
+          timeEntryId: entry.id,
+          pausedAt: new Date(),
+          pauseNote: body.pauseNote || null,
+        },
+      });
+
+      await prisma.timeEntry.update({
+        where: { id: entry.id },
+        data: { pausedAt: pause.pausedAt },
+      });
+
+      return apiSuccess({ pause, pausedAt: pause.pausedAt });
+    }
+
+    if (body.action === "resume") {
+      const entry = await prisma.timeEntry.findFirst({
+        where: { id: body.timeEntryId, userId: session.user.id, checkOutAt: null, pausedAt: { not: null } },
+      });
+      if (!entry) {
+        return apiError("No paused session found", "NOT_FOUND", 404);
+      }
+
+      const now = new Date();
+      const pause = await prisma.timeEntryPause.findFirst({
+        where: { timeEntryId: entry.id, resumedAt: null },
+        orderBy: { pausedAt: "desc" },
+      });
+      if (!pause) {
+        return apiError("No pause record found", "NOT_FOUND", 404);
+      }
+
+      const durationMs = now.getTime() - pause.pausedAt.getTime();
+      const totalPauseMs = (entry.totalPauseMs || 0) + durationMs;
+
+      await prisma.timeEntryPause.update({
+        where: { id: pause.id },
+        data: {
+          resumedAt: now,
+          durationMs,
+          resumeNote: body.resumeNote || null,
+        },
+      });
+
+      await prisma.timeEntry.update({
+        where: { id: entry.id },
+        data: { pausedAt: null, totalPauseMs },
+      });
+
+      return apiSuccess({ resumedAt: now, durationMs, totalPauseMs });
+    }
+
     return apiError("Invalid action", "INVALID_ACTION", 400);
   } catch (error) {
     if (error instanceof Error && error.name === "ZodError") {

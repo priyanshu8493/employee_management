@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Play, Square, AlertTriangle, Plus, Trash2, Clock, BarChart3, CheckCircle2, Circle, Loader2 } from "lucide-react";
+import { Play, Square, Pause, AlertTriangle, Plus, Trash2, Clock, BarChart3, CheckCircle2, Circle, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,18 +28,21 @@ import {
   Label,
 } from "@/components/ui/label";
 import { format } from "date-fns";
-import { formatDurationShort } from "@/lib/utils";
+import { formatDuration, formatDurationShort } from "@/lib/utils";
 
-function LiveTimer({ checkInAt }: { checkInAt: string }) {
+function LiveTimer({ checkInAt, totalPauseMs, pausedAt }: { checkInAt: string; totalPauseMs: number; pausedAt: string | null }) {
   const [elapsed, setElapsed] = useState("00:00:00");
 
   useEffect(() => {
     const start = new Date(checkInAt).getTime();
     const tick = () => {
-      const diff = Math.floor((Date.now() - start) / 1000);
-      const h = Math.floor(diff / 3600);
-      const m = Math.floor((diff % 3600) / 60);
-      const s = diff % 60;
+      const now = Date.now();
+      const rawDiff = Math.floor((now - start) / 1000);
+      const pauseSeconds = Math.floor(totalPauseMs / 1000);
+      const activeSeconds = Math.max(rawDiff - pauseSeconds, 0);
+      const h = Math.floor(activeSeconds / 3600);
+      const m = Math.floor((activeSeconds % 3600) / 60);
+      const s = activeSeconds % 60;
       setElapsed(
         `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
       );
@@ -47,7 +50,16 @@ function LiveTimer({ checkInAt }: { checkInAt: string }) {
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [checkInAt]);
+  }, [checkInAt, totalPauseMs]);
+
+  if (pausedAt) {
+    return (
+      <div className="flex flex-col gap-1">
+        <span className="font-mono text-2xl tabular-nums text-muted-foreground">{elapsed}</span>
+        <span className="text-xs text-warning font-medium">PAUSED</span>
+      </div>
+    );
+  }
 
   return (
     <span className="font-mono text-2xl tabular-nums">{elapsed}</span>
@@ -67,6 +79,10 @@ export default function EmployeeHomePage() {
   const [checkinSubTask, setCheckinSubTask] = useState("");
   const [checkinNotes, setCheckinNotes] = useState("");
   const [greeting, setGreeting] = useState("");
+  const [showPauseModal, setShowPauseModal] = useState(false);
+  const [pauseNote, setPauseNote] = useState("");
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [resumeNote, setResumeNote] = useState("");
 
   const isTeamLeader = session?.user?.role === "TEAM_LEADER";
 
@@ -185,6 +201,58 @@ export default function EmployeeHomePage() {
         setQcMistakes([]);
         setShowQcModal(true);
       }
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
+  });
+
+  const pauseMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/time-entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "pause",
+          timeEntryId: activeSession?.id,
+          pauseNote: pauseNote || undefined,
+        }),
+      });
+      const { data, error } = await res.json();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["active-session"] });
+      toast.success("Timer paused");
+      setShowPauseModal(false);
+      setPauseNote("");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message);
+    },
+  });
+
+  const resumeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/time-entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "resume",
+          timeEntryId: activeSession?.id,
+          resumeNote: resumeNote || undefined,
+        }),
+      });
+      const { data, error } = await res.json();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["active-session"] });
+      toast.success("Timer resumed");
+      setShowResumeModal(false);
+      setResumeNote("");
     },
     onError: (err: Error) => {
       toast.error(err.message);
@@ -350,12 +418,14 @@ export default function EmployeeHomePage() {
       {loadingActive ? (
         <div className="h-32 bg-surface-raised rounded-xl animate-pulse" />
       ) : activeSession ? (
-        <Card className="border border-primary/30 bg-primary/5 p-6 rounded-xl">
+        <Card className={`border p-6 rounded-xl ${activeSession.pausedAt ? 'border-warning/30 bg-warning/5' : 'border-primary/30 bg-primary/5'}`}>
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-primary">
-                <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                <span className="text-sm font-medium">Active Session</span>
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${activeSession.pausedAt ? 'bg-warning' : 'bg-success'} animate-pulse`} />
+                <span className={`text-sm font-medium ${activeSession.pausedAt ? 'text-warning' : 'text-primary'}`}>
+                  {activeSession.pausedAt ? 'Session Paused' : 'Active Session'}
+                </span>
               </div>
               <div>
                 <p className="text-lg font-semibold text-foreground">
@@ -365,20 +435,65 @@ export default function EmployeeHomePage() {
                   {activeSession.subTask?.name}
                 </p>
               </div>
-              <LiveTimer checkInAt={activeSession.checkInAt} />
+              <LiveTimer checkInAt={activeSession.checkInAt} totalPauseMs={activeSession.totalPauseMs || 0} pausedAt={activeSession.pausedAt} />
               <p className="text-xs text-muted-foreground">
                 Since {format(new Date(activeSession.checkInAt), "h:mm a")}
               </p>
+              {activeSession.pausedAt && (
+                <p className="text-xs text-warning">
+                  Paused at {format(new Date(activeSession.pausedAt), "h:mm a")}
+                </p>
+              )}
             </div>
-            <Button
-              size="lg"
-              className="bg-danger hover:bg-danger/90 text-white"
-              onClick={() => setShowCheckoutModal(true)}
-            >
-              <Square className="h-4 w-4 mr-2" />
-              Check Out
-            </Button>
+            <div className="flex items-center gap-2">
+              {activeSession.pausedAt ? (
+                <Button
+                  size="lg"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  onClick={() => setShowResumeModal(true)}
+                >
+                  <Play className="h-4 w-4 mr-2" />
+                  Resume
+                </Button>
+              ) : (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-warning text-warning hover:bg-warning/10"
+                  onClick={() => setShowPauseModal(true)}
+                >
+                  <Pause className="h-4 w-4 mr-2" />
+                  Pause
+                </Button>
+              )}
+              <Button
+                size="lg"
+                className="bg-danger hover:bg-danger/90 text-white"
+                onClick={() => setShowCheckoutModal(true)}
+              >
+                <Square className="h-4 w-4 mr-2" />
+                Check Out
+              </Button>
+            </div>
           </div>
+          {activeSession.pauseHistory?.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-border">
+              <p className="text-xs text-muted-foreground font-medium mb-2">Pause History</p>
+              <div className="space-y-1.5">
+                {activeSession.pauseHistory.map((p: any) => (
+                  <div key={p.id} className="text-xs text-muted-foreground flex items-start gap-2">
+                    <span className="text-warning shrink-0">&#9208;</span>
+                    <div>
+                      <span>{format(new Date(p.pausedAt), "h:mm a")} &ndash; {format(new Date(p.resumedAt), "h:mm a")}</span>
+                      {p.pauseNote && <span className="block italic">{p.pauseNote}</span>}
+                      {p.resumeNote && <span className="block italic text-muted-foreground/70">Resume: {p.resumeNote}</span>}
+                      {p.durationMs != null && <span className="block text-muted-foreground/50">({Math.round(p.durationMs / 60000)}m)</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </Card>
       ) : (
         <>
@@ -558,6 +673,82 @@ export default function EmployeeHomePage() {
               className="bg-danger hover:bg-danger/90 text-white"
             >
               {checkoutMutation.isPending ? "Checking out..." : "Confirm Check Out"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPauseModal} onOpenChange={(o) => { if (!o) { setShowPauseModal(false); setPauseNote(""); } }}>
+        <DialogContent className="bg-surface-raised border-border">
+          <DialogHeader>
+            <DialogTitle className="text-foreground flex items-center gap-2">
+              <Pause className="h-5 w-5 text-warning" />
+              Pause Timer
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Briefly describe the reason for pausing:
+            </p>
+            <Textarea
+              placeholder="e.g., Quick break, lunch, meeting, bathroom break..."
+              value={pauseNote}
+              onChange={(e) => setPauseNote(e.target.value)}
+              className="bg-surface border-border text-foreground placeholder:text-muted-foreground min-h-[80px]"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setShowPauseModal(false); setPauseNote(""); }}
+              className="border-border text-foreground"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => pauseMutation.mutate()}
+              disabled={pauseMutation.isPending}
+              className="bg-warning hover:bg-warning/90 text-black"
+            >
+              {pauseMutation.isPending ? "Pausing..." : "Pause Timer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showResumeModal} onOpenChange={(o) => { if (!o) { setShowResumeModal(false); setResumeNote(""); } }}>
+        <DialogContent className="bg-surface-raised border-border">
+          <DialogHeader>
+            <DialogTitle className="text-foreground flex items-center gap-2">
+              <Play className="h-5 w-5 text-primary" />
+              Resume Timer
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Add a note about returning from your break (optional):
+            </p>
+            <Textarea
+              placeholder="e.g., Back from lunch, break ended..."
+              value={resumeNote}
+              onChange={(e) => setResumeNote(e.target.value)}
+              className="bg-surface border-border text-foreground placeholder:text-muted-foreground min-h-[80px]"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setShowResumeModal(false); setResumeNote(""); }}
+              className="border-border text-foreground"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => resumeMutation.mutate()}
+              disabled={resumeMutation.isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              {resumeMutation.isPending ? "Resuming..." : "Resume Timer"}
             </Button>
           </DialogFooter>
         </DialogContent>

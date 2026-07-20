@@ -131,7 +131,11 @@ export default function ProjectsPage() {
 
   const archiveMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/projects/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "ARCHIVED" }),
+      });
       const { data, error } = await res.json();
       if (error) throw new Error(error.message);
       return data;
@@ -709,7 +713,7 @@ export default function ProjectsPage() {
         open={!!deleteId}
         onOpenChange={() => setDeleteId(null)}
         title="Delete Project"
-        description="Are you sure? This will permanently delete the project. If it has time entries, it will be archived instead."
+        description="Are you sure? This will permanently delete the project and all associated time entries, subtasks, and assignments. This cannot be undone."
         confirmLabel="Delete"
         variant="destructive"
         onConfirm={() => deleteId && deleteMutation.mutate(deleteId)}

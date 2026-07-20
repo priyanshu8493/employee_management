@@ -87,22 +87,13 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     await requireRole("OWNER");
     const { id } = await params;
 
-    const existing = await prisma.project.findUnique({
-      where: { id },
-      include: { _count: { select: { timeEntries: true, subTasks: true } } },
-    });
+    const existing = await prisma.project.findUnique({ where: { id } });
     if (!existing) return apiError("Project not found", "NOT_FOUND", 404);
 
-    if (existing._count.timeEntries > 0) {
-      await prisma.project.update({
-        where: { id },
-        data: { status: "ARCHIVED" },
-      });
-      return apiSuccess({ message: "Project archived (has time entries)" });
-    }
-
-    await prisma.projectLeader.deleteMany({ where: { projectId: id } });
+    await prisma.timeEntry.deleteMany({ where: { projectId: id } });
+    await prisma.subTaskAssignment.deleteMany({ where: { subTask: { projectId: id } } });
     await prisma.subTask.deleteMany({ where: { projectId: id } });
+    await prisma.projectLeader.deleteMany({ where: { projectId: id } });
     await prisma.project.delete({ where: { id } });
     return apiSuccess({ deleted: true });
   } catch (error) {

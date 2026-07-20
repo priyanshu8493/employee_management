@@ -313,6 +313,7 @@ export default function EmployeesPage() {
         searchPlaceholder="Search by name or email..."
         onRowClick={(emp: any) => router.push(`/dashboard/employees/${emp.id}`)}
         emptyMessage={tab === "active" ? "No active employees" : "No past employees"}
+        pageSize={25}
       />
 
       <Dialog open={showCreate} onOpenChange={setShowCreate}>

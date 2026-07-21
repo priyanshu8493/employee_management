@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, UserCheck, UserX, AlertTriangle, Trash2, CalendarDays, Plus } from "lucide-react";
+import { ArrowLeft, UserCheck, UserX, AlertTriangle, Trash2, CalendarDays, Plus, Coffee } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -92,6 +92,16 @@ export default function EmployeeDetailPage() {
       const res = await fetch(`/api/leaves/stats?userId=${id}&year=${leaveYear}`);
       const { data } = await res.json();
       return data;
+    },
+    staleTime: 30000,
+  });
+
+  const { data: breakHistory } = useQuery({
+    queryKey: ["employee-breaks", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/employee-breaks?userId=${id}`);
+      const { data } = await res.json();
+      return data || [];
     },
     staleTime: 30000,
   });
@@ -362,6 +372,9 @@ export default function EmployeeDetailPage() {
           <TabsTrigger value="leaves" className="data-[state=active]:bg-surface-raised">
             <CalendarDays className="h-3.5 w-3.5 mr-1.5" /> Leaves
           </TabsTrigger>
+          <TabsTrigger value="breaks" className="data-[state=active]:bg-surface-raised">
+            <Coffee className="h-3.5 w-3.5 mr-1.5" /> Breaks
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 pt-6">
@@ -544,6 +557,52 @@ export default function EmployeeDetailPage() {
             <div className="text-center py-12 text-muted-foreground">
               <CalendarDays className="h-8 w-8 mx-auto mb-2 opacity-40" />
               <p>No leaves recorded for {leaveYear}</p>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="breaks" className="pt-6 space-y-6">
+          {breakHistory && breakHistory.length > 0 ? (
+            <Card className="border border-border rounded-xl overflow-hidden">
+              <div className="divide-y divide-border">
+                {breakHistory.map((b: any) => (
+                  <div key={b.id} className="p-4 hover:bg-surface-raised/50 transition-colors">
+                    <div className="flex items-start gap-3">
+                      <Coffee className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium text-foreground">
+                            {new Date(b.pausedAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                          </span>
+                          {b.projectName && (
+                            <span className="text-xs bg-surface-raised px-2 py-0.5 rounded text-muted-foreground">
+                              {b.projectName}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                          <span>Paused: {new Date(b.pausedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</span>
+                          <span>Resumed: {new Date(b.resumedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</span>
+                          <span className="font-medium text-foreground">
+                            {formatDuration(Math.round(b.durationMs / 60000))}
+                          </span>
+                        </div>
+                        {b.pauseNote && (
+                          <p className="text-xs text-muted-foreground mt-1">Reason: {b.pauseNote}</p>
+                        )}
+                        {b.resumeNote && (
+                          <p className="text-xs text-muted-foreground">Resume note: {b.resumeNote}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <Coffee className="h-8 w-8 mx-auto mb-2 opacity-40" />
+              <p>No break records found</p>
             </div>
           )}
         </TabsContent>

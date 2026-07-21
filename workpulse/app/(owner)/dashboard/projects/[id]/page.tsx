@@ -795,6 +795,15 @@ export default function ProjectDetailPage() {
                   className="bg-surface border-border text-foreground"
                 />
               </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">Estimated Hours</Label>
+                <Input
+                  type="number"
+                  defaultValue={editSubtask.estimatedHours || ""}
+                  id="edit-st-hours"
+                  className="bg-surface border-border text-foreground"
+                />
+              </div>
               <div className="flex justify-end gap-3">
                 <Button variant="outline" onClick={() => setEditSubtask(null)} className="border-border text-foreground">
                   Cancel
@@ -804,7 +813,8 @@ export default function ProjectDetailPage() {
                   onClick={() => {
                     const name = (document.getElementById("edit-st-name") as HTMLInputElement)?.value;
                     const description = (document.getElementById("edit-st-desc") as HTMLTextAreaElement)?.value;
-                    if (name) updateSubtaskMutation.mutate({ subtaskId: editSubtask.id, data: { name, description } });
+                    const estimatedHours = parseFloat((document.getElementById("edit-st-hours") as HTMLInputElement)?.value || "0");
+                    if (name) updateSubtaskMutation.mutate({ subtaskId: editSubtask.id, data: { name, description, estimatedHours } });
                   }}
                 >
                   Save

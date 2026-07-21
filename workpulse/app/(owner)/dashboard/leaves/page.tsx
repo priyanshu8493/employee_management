@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
-import { CalendarOff, Search, MessageSquare, Save, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarOff, Search, MessageSquare, Save, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 export default function OwnerLeavesPage() {
   const queryClient = useQueryClient();
@@ -33,6 +34,7 @@ export default function OwnerLeavesPage() {
   const [remarksLeave, setRemarksLeave] = useState<any>(null);
   const [remarksText, setRemarksText] = useState("");
   const [monthFilter, setMonthFilter] = useState("thisMonth");
+  const [deleteLeaveId, setDeleteLeaveId] = useState<string | null>(null);
 
   const { data: leaves, isLoading } = useQuery({
     queryKey: ["all-leaves"],
@@ -112,6 +114,21 @@ export default function OwnerLeavesPage() {
     onError: (err: Error) => {
       toast.error(err.message);
     },
+  });
+
+  const deleteLeaveMutation = useMutation({
+    mutationFn: async (leaveId: string) => {
+      const res = await fetch(`/api/leaves/${leaveId}`, { method: "DELETE" });
+      const { data, error } = await res.json();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-leaves"] });
+      toast.success("Leave record deleted");
+      setDeleteLeaveId(null);
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   return (
@@ -237,6 +254,14 @@ export default function OwnerLeavesPage() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="text-xs text-muted-foreground hover:text-danger"
+                          onClick={() => setDeleteLeaveId(leave.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="text-xs text-muted-foreground hover:text-foreground"
                           onClick={() => {
                             setRemarksLeave(leave);
@@ -326,6 +351,16 @@ export default function OwnerLeavesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteLeaveId}
+        onOpenChange={() => setDeleteLeaveId(null)}
+        title="Delete Leave Record"
+        description="Are you sure you want to delete this leave record? This cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() => deleteLeaveId && deleteLeaveMutation.mutate(deleteLeaveId)}
+      />
     </div>
   );
 }

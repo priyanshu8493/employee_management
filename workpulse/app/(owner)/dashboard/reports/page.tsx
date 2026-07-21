@@ -259,7 +259,7 @@ export default function ReportsPage() {
                   }))}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#2E3147" />
-                  <XAxis dataKey="name" stroke="#94A3B8" fontSize={12} />
+                  <XAxis dataKey="name" stroke="#94A3B8" fontSize={11} angle={-40} textAnchor="end" height={80} interval={0} />
                   <YAxis stroke="#94A3B8" fontSize={12} unit="h" />
                   <Tooltip
                     contentStyle={{ background: "#232640", border: "1px solid #2E3147", borderRadius: "8px", color: "#F1F5F9" }}

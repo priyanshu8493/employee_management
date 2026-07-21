@@ -85,7 +85,7 @@ export default function EmployeeDetailPage() {
   const [addLeaveDate, setAddLeaveDate] = useState("");
   const [addLeaveReason, setAddLeaveReason] = useState("");
   const [deleteLeaveId, setDeleteLeaveId] = useState<string | null>(null);
-  const [breakMonthFilter, setBreakMonthFilter] = useState("thisMonth");
+  const [breakYear, setBreakYear] = useState(new Date().getFullYear());
 
   const { data: leaveStats } = useQuery({
     queryKey: ["employee-leave-stats", id, leaveYear],
@@ -200,42 +200,42 @@ export default function EmployeeDetailPage() {
     return months.map((m) => ({ month: m.label, hours: Math.round(m.hours * 10) / 10 }));
   }, [timeEntries]);
 
-  const filteredBreaks = useMemo(() => {
-    if (!breakHistory) return [];
-    const items = breakHistory as any[];
+  const breakStats = useMemo(() => {
+    if (!breakHistory) return { totalBreaks: 0, totalMinutes: 0, monthlyBreakdown: [] as any[], filteredBreaks: [] as any[] };
+
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const items = breakHistory as any[];
 
-    if (breakMonthFilter === "all") return items;
+    const yearBreaks = items.filter((b) => new Date(b.date).getFullYear() === breakYear);
+    const totalBreaks = yearBreaks.length;
+    const totalMinutes = yearBreaks.reduce((sum: number, b: any) => sum + Math.round(b.durationMs / 60000), 0);
 
-    if (breakMonthFilter === "today") {
-      return items.filter((b) => {
-        const d = new Date(b.date);
-        return d.getTime() === todayStart.getTime();
-      });
+    const monthlyCounts: Record<number, { count: number; minutes: number }> = {};
+    for (let m = 0; m < 12; m++) monthlyCounts[m] = { count: 0, minutes: 0 };
+
+    for (const b of yearBreaks) {
+      const month = new Date(b.date).getMonth();
+      monthlyCounts[month].count++;
+      monthlyCounts[month].minutes += Math.round(b.durationMs / 60000);
     }
 
-    if (breakMonthFilter === "upcoming") {
-      return items.filter((b) => new Date(b.date) > todayStart);
-    }
+    const currentMonth = now.getMonth();
+    const monthlyBreakdown = Array.from({ length: 12 }, (_, i) => ({
+      month: new Date(breakYear, i).toLocaleString("en-US", { month: "short" }),
+      monthIndex: i,
+      count: monthlyCounts[i].count,
+      minutes: monthlyCounts[i].minutes,
+    }));
 
-    if (breakMonthFilter === "past") {
-      return items.filter((b) => new Date(b.date) < todayStart);
-    }
+    const breaksThisMonth = monthlyCounts[currentMonth]?.count || 0;
+    const breaksYTD = Object.values(monthlyCounts)
+      .slice(0, currentMonth + 1)
+      .reduce((sum, m) => sum + m.count, 0);
 
-    const monthIndex = parseInt(breakMonthFilter);
-    if (!isNaN(monthIndex)) {
-      const year = now.getFullYear();
-      const start = new Date(year, now.getMonth() - monthIndex, 1);
-      const end = new Date(year, now.getMonth() - monthIndex + 1, 0, 23, 59, 59, 999);
-      return items.filter((b) => {
-        const d = new Date(b.date);
-        return d >= start && d <= end;
-      });
-    }
+    const filteredBreaks = yearBreaks.sort((a: any, b: any) => new Date(b.pausedAt).getTime() - new Date(a.pausedAt).getTime());
 
-    return items;
-  }, [breakHistory, breakMonthFilter]);
+    return { totalBreaks, totalMinutes, monthlyBreakdown, breaksThisMonth, breaksYTD, filteredBreaks };
+  }, [breakHistory, breakYear]);
 
   if (isLoading) {
     return <div className="space-y-6">
@@ -600,26 +600,64 @@ export default function EmployeeDetailPage() {
         </TabsContent>
 
         <TabsContent value="breaks" className="pt-6 space-y-6">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-foreground">Break History</h3>
-            <Select value={breakMonthFilter} onValueChange={(v) => v && setBreakMonthFilter(v)}>
-              <SelectTrigger className="w-44 bg-surface border-border text-foreground">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-surface-raised border-border">
-                <SelectItem value="thisMonth">This Month</SelectItem>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="upcoming">Upcoming</SelectItem>
-                <SelectItem value="past">All Past</SelectItem>
-                <SelectItem value="all">All Breaks</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-border text-foreground"
+                onClick={() => setBreakYear((y) => y - 1)}
+              >
+                &larr;
+              </Button>
+              <span className="text-sm font-medium text-foreground min-w-[60px] text-center">{breakYear}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-border text-foreground"
+                onClick={() => setBreakYear((y) => y + 1)}
+                disabled={breakYear >= new Date().getFullYear()}
+              >
+                &rarr;
+              </Button>
+            </div>
           </div>
 
-          {filteredBreaks.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-4 rounded-lg bg-surface-raised text-center">
+              <p className="text-2xl font-bold text-foreground">{breakStats.totalBreaks}</p>
+              <p className="text-xs text-muted-foreground">Total Breaks ({breakYear})</p>
+            </div>
+            <div className="p-4 rounded-lg bg-surface-raised text-center">
+              <p className="text-2xl font-bold text-foreground">{breakStats.breaksThisMonth || 0}</p>
+              <p className="text-xs text-muted-foreground">This Month</p>
+            </div>
+            <div className="p-4 rounded-lg bg-surface-raised text-center">
+              <p className="text-2xl font-bold text-foreground">{breakStats.breaksYTD || 0}</p>
+              <p className="text-xs text-muted-foreground">Year to Date</p>
+            </div>
+          </div>
+
+          <Card className="border border-border p-5 rounded-xl">
+            <h3 className="text-sm font-medium text-foreground mb-4">Monthly Breakdown ({breakYear})</h3>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={breakStats.monthlyBreakdown || []}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2E3147" />
+                  <XAxis dataKey="month" stroke="#94A3B8" fontSize={11} />
+                  <YAxis stroke="#94A3B8" fontSize={11} allowDecimals={false} />
+                  <Tooltip contentStyle={{ background: "#232640", border: "1px solid #2E3147", borderRadius: "8px", color: "#F1F5F9" }} />
+                  <Bar dataKey="count" fill="#6C63FF" radius={[4, 4, 0, 0]} name="Breaks" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          {breakStats.filteredBreaks && breakStats.filteredBreaks.length > 0 ? (
             <Card className="border border-border rounded-xl overflow-hidden">
               <div className="divide-y divide-border">
-                {filteredBreaks.map((b: any) => (
+                {breakStats.filteredBreaks.map((b: any) => (
                   <div key={b.id} className="p-4 hover:bg-surface-raised/50 transition-colors">
                     <div className="flex items-start gap-3">
                       <Coffee className="h-4 w-4 text-primary shrink-0 mt-0.5" />
@@ -656,7 +694,7 @@ export default function EmployeeDetailPage() {
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               <Coffee className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              <p>{breakHistory && breakHistory.length > 0 ? "No breaks match your filter" : "No break records found"}</p>
+              <p>No breaks recorded for {breakYear}</p>
             </div>
           )}
         </TabsContent>

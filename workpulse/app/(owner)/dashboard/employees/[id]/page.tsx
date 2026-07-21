@@ -85,6 +85,7 @@ export default function EmployeeDetailPage() {
   const [addLeaveDate, setAddLeaveDate] = useState("");
   const [addLeaveReason, setAddLeaveReason] = useState("");
   const [deleteLeaveId, setDeleteLeaveId] = useState<string | null>(null);
+  const [breakMonthFilter, setBreakMonthFilter] = useState("thisMonth");
 
   const { data: leaveStats } = useQuery({
     queryKey: ["employee-leave-stats", id, leaveYear],
@@ -198,6 +199,43 @@ export default function EmployeeDetailPage() {
     }
     return months.map((m) => ({ month: m.label, hours: Math.round(m.hours * 10) / 10 }));
   }, [timeEntries]);
+
+  const filteredBreaks = useMemo(() => {
+    if (!breakHistory) return [];
+    const items = breakHistory as any[];
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (breakMonthFilter === "all") return items;
+
+    if (breakMonthFilter === "today") {
+      return items.filter((b) => {
+        const d = new Date(b.date);
+        return d.getTime() === todayStart.getTime();
+      });
+    }
+
+    if (breakMonthFilter === "upcoming") {
+      return items.filter((b) => new Date(b.date) > todayStart);
+    }
+
+    if (breakMonthFilter === "past") {
+      return items.filter((b) => new Date(b.date) < todayStart);
+    }
+
+    const monthIndex = parseInt(breakMonthFilter);
+    if (!isNaN(monthIndex)) {
+      const year = now.getFullYear();
+      const start = new Date(year, now.getMonth() - monthIndex, 1);
+      const end = new Date(year, now.getMonth() - monthIndex + 1, 0, 23, 59, 59, 999);
+      return items.filter((b) => {
+        const d = new Date(b.date);
+        return d >= start && d <= end;
+      });
+    }
+
+    return items;
+  }, [breakHistory, breakMonthFilter]);
 
   if (isLoading) {
     return <div className="space-y-6">
@@ -562,10 +600,26 @@ export default function EmployeeDetailPage() {
         </TabsContent>
 
         <TabsContent value="breaks" className="pt-6 space-y-6">
-          {breakHistory && breakHistory.length > 0 ? (
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-medium text-foreground">Break History</h3>
+            <Select value={breakMonthFilter} onValueChange={(v) => v && setBreakMonthFilter(v)}>
+              <SelectTrigger className="w-44 bg-surface border-border text-foreground">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-surface-raised border-border">
+                <SelectItem value="thisMonth">This Month</SelectItem>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="upcoming">Upcoming</SelectItem>
+                <SelectItem value="past">All Past</SelectItem>
+                <SelectItem value="all">All Breaks</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {filteredBreaks.length > 0 ? (
             <Card className="border border-border rounded-xl overflow-hidden">
               <div className="divide-y divide-border">
-                {breakHistory.map((b: any) => (
+                {filteredBreaks.map((b: any) => (
                   <div key={b.id} className="p-4 hover:bg-surface-raised/50 transition-colors">
                     <div className="flex items-start gap-3">
                       <Coffee className="h-4 w-4 text-primary shrink-0 mt-0.5" />
@@ -602,7 +656,7 @@ export default function EmployeeDetailPage() {
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               <Coffee className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              <p>No break records found</p>
+              <p>{breakHistory && breakHistory.length > 0 ? "No breaks match your filter" : "No break records found"}</p>
             </div>
           )}
         </TabsContent>

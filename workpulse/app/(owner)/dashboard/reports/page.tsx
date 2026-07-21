@@ -250,17 +250,35 @@ export default function ReportsPage() {
 
           <Card className="border border-border p-5 rounded-xl">
             <h3 className="text-sm font-medium text-foreground mb-4">Hours by Project</h3>
-            <div className="h-72 mb-4">
+            <div className="h-80 mb-4">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={(data.projectHours || []).map((p: any) => ({
                     name: p.name,
                     hours: p.totalHours,
                   }))}
-                  margin={{ bottom: 100 }}
+                  margin={{ bottom: 120, left: 10, right: 10 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#2E3147" />
-                  <XAxis dataKey="name" stroke="#94A3B8" fontSize={11} angle={-45} textAnchor="end" interval={0} />
+                  <XAxis
+                    dataKey="name"
+                    stroke="#94A3B8"
+                    fontSize={11}
+                    tick={(props) => {
+                      const { x, y, payload } = props;
+                      const maxChars = 18;
+                      const label = payload.value.length > maxChars
+                        ? payload.value.slice(0, maxChars) + "…"
+                        : payload.value;
+                      return (
+                        <g transform={`translate(${x},${y})`}>
+                          <text x={0} y={0} dy={10} textAnchor="end" fill="#94A3B8" fontSize={11} transform="rotate(-35)">
+                            {label}
+                          </text>
+                        </g>
+                      );
+                    }}
+                  />
                   <YAxis stroke="#94A3B8" fontSize={12} unit="h" />
                   <Tooltip
                     contentStyle={{ background: "#232640", border: "1px solid #2E3147", borderRadius: "8px", color: "#F1F5F9" }}

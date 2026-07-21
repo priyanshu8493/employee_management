@@ -54,7 +54,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return apiError("You can only cancel your own leave", "FORBIDDEN", 403);
     }
 
-    if (leave.date < new Date()) {
+    if (leave.date < new Date() && session.user.role !== "OWNER") {
       return apiError("Cannot cancel past leave", "BAD_REQUEST", 400);
     }
 

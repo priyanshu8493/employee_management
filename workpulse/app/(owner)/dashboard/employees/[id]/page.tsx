@@ -84,6 +84,7 @@ export default function EmployeeDetailPage() {
   const [showAddLeave, setShowAddLeave] = useState(false);
   const [addLeaveDate, setAddLeaveDate] = useState("");
   const [addLeaveReason, setAddLeaveReason] = useState("");
+  const [deleteLeaveId, setDeleteLeaveId] = useState<string | null>(null);
 
   const { data: leaveStats } = useQuery({
     queryKey: ["employee-leave-stats", id, leaveYear],
@@ -132,6 +133,21 @@ export default function EmployeeDetailPage() {
       setShowAddLeave(false);
       setAddLeaveDate("");
       setAddLeaveReason("");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const deleteLeaveMutation = useMutation({
+    mutationFn: async (leaveId: string) => {
+      const res = await fetch(`/api/leaves/${leaveId}`, { method: "DELETE" });
+      const { data, error } = await res.json();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employee-leave-stats", id, leaveYear] });
+      toast.success("Leave record deleted");
+      setDeleteLeaveId(null);
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -512,6 +528,14 @@ export default function EmployeeDetailPage() {
                         )}
                       </div>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:text-danger shrink-0"
+                      onClick={() => setDeleteLeaveId(leave.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -571,6 +595,16 @@ export default function EmployeeDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteLeaveId}
+        onOpenChange={() => setDeleteLeaveId(null)}
+        title="Delete Leave Record"
+        description="Are you sure you want to delete this leave record? This cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() => deleteLeaveId && deleteLeaveMutation.mutate(deleteLeaveId)}
+      />
 
       <ConfirmDialog
         open={!!deleteId}

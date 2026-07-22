@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
         include: {
           project: { select: { id: true, name: true, color: true, status: true } },
           subTask: { select: { id: true, name: true, status: true } },
+          user: { select: { id: true, name: true } },
         },
         orderBy: { checkInAt: "desc" },
         skip: (page - 1) * limit,

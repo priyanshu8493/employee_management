@@ -274,15 +274,15 @@ export default function EmployeeDetailPage() {
       </button>
 
       <Card className="border border-border p-6 rounded-xl">
-        <div className="flex items-start justify-between flex-wrap gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
+            <Avatar className="h-14 w-14 sm:h-16 sm:w-16">
               <AvatarFallback className="bg-primary text-primary-foreground text-lg">
                 {employee.name?.split(" ").map((n: string) => n[0]).join("")}
               </AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">{employee.name}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground">{employee.name}</h1>
               <p className="text-muted-foreground">{employee.email}</p>
               <div className="flex items-center gap-2 mt-1">
                 {employee.designation && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">{employee.designation}</span>}
@@ -304,7 +304,7 @@ export default function EmployeeDetailPage() {
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               className="border-border text-foreground"

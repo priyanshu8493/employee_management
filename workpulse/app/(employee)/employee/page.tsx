@@ -370,9 +370,9 @@ export default function EmployeeHomePage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">
             {greeting}, {session?.user?.name?.split(" ")[0]}
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -458,8 +458,8 @@ export default function EmployeeHomePage() {
       {loadingActive ? (
         <div className="h-32 bg-surface-raised rounded-xl animate-pulse" />
       ) : activeSession ? (
-        <Card className={`border p-6 rounded-xl ${activeSession.pausedAt ? 'border-warning/30 bg-warning/5' : 'border-primary/30 bg-primary/5'}`}>
-          <div className="flex items-start justify-between flex-wrap gap-4">
+        <Card className={`border p-4 sm:p-6 rounded-xl ${activeSession.pausedAt ? 'border-warning/30 bg-warning/5' : 'border-primary/30 bg-primary/5'}`}>
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${activeSession.pausedAt ? 'bg-warning' : 'bg-success'} animate-pulse`} />
@@ -488,7 +488,7 @@ export default function EmployeeHomePage() {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {activeSession.pausedAt ? (
                 <Button
                   size="lg"
@@ -614,7 +614,7 @@ export default function EmployeeHomePage() {
       )}
 
       <Dialog open={!!checkinProject} onOpenChange={(o) => { if (!o) { setCheckinProject(null); setCheckinSubTask(""); setCheckinNotes(""); } }}>
-        <DialogContent className="bg-surface-raised border-border">
+        <DialogContent className="bg-surface-raised border-border sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-foreground flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: checkinProject?.color }} />

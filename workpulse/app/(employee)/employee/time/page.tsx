@@ -115,9 +115,9 @@ export default function EmployeeTimePage() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">My Time</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">My Time</h1>
         <p className="text-muted-foreground mt-1">Track your work hours</p>
       </div>
 
@@ -152,9 +152,9 @@ export default function EmployeeTimePage() {
         </Card>
       </div>
 
-      <Card className="border border-border p-5 rounded-xl">
+      <Card className="border border-border p-4 sm:p-5 rounded-xl">
         <h3 className="text-sm font-medium text-foreground mb-4">Weekly Hours</h3>
-        <div className="h-56">
+        <div className="h-48 sm:h-56">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={weekChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#2E3147" />

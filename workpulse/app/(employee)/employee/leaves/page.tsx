@@ -132,10 +132,10 @@ export default function EmployeeLeavesPage() {
       : !!leaveStartDate && !!leaveEndDate && leaveStartDate <= leaveEndDate;
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between flex-wrap gap-4">
+    <div className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">My Leaves</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">My Leaves</h1>
           <p className="text-muted-foreground mt-1">
             Mark leaves and inform your organisation
           </p>
@@ -170,9 +170,9 @@ export default function EmployeeLeavesPage() {
             {upcomingLeaves.map((leave: any) => (
               <div
                 key={leave.id}
-                className="flex items-center justify-between p-4 rounded-lg bg-surface-raised border border-border"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg bg-surface-raised border border-border"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                     <CalendarOff className="h-5 w-5 text-primary" />
                   </div>
@@ -216,9 +216,9 @@ export default function EmployeeLeavesPage() {
             {(pastLeaves || []).map((leave: any) => (
               <div
                 key={leave.id}
-                className="flex items-center justify-between p-4 rounded-lg bg-surface-raised border border-border"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg bg-surface-raised border border-border"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
                     <CalendarOff className="h-5 w-5 text-muted-foreground" />
                   </div>
@@ -249,7 +249,7 @@ export default function EmployeeLeavesPage() {
       </Card>
 
       <Dialog open={showMarkDialog} onOpenChange={(o) => { if (!o) resetDialog(); }}>
-        <DialogContent className="bg-surface-raised border-border">
+        <DialogContent className="bg-surface-raised border-border sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-foreground flex items-center gap-2">
               <CalendarOff className="h-5 w-5 text-primary" />

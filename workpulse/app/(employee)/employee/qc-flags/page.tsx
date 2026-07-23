@@ -19,7 +19,7 @@ export default function QcFlagsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">QC Flags</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">QC Flags</h1>
         <p className="text-muted-foreground mt-1">
           Quality control flags raised against your work
         </p>

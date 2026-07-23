@@ -132,9 +132,9 @@ export default function OwnerLeavesPage() {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Leaves</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Leaves</h1>
         <p className="text-muted-foreground mt-1">
           View all leaves across the organisation
         </p>
@@ -207,7 +207,7 @@ export default function OwnerLeavesPage() {
                     key={leave.id}
                     className="border border-border p-4 rounded-xl hover:border-primary/30 transition-colors"
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                       <Avatar className="h-10 w-10">
                         <AvatarFallback className="bg-primary/20 text-primary text-sm">
                           {leave.user?.name?.split(" ").map((n: string) => n[0]).join("")}

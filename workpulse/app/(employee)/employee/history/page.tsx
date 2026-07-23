@@ -104,10 +104,10 @@ export default function EmployeeHistoryPage() {
   ];
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between flex-wrap gap-4">
+    <div className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">History</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">History</h1>
           <p className="text-muted-foreground mt-1">View your past time entries</p>
         </div>
         <Button
@@ -122,7 +122,7 @@ export default function EmployeeHistoryPage() {
       </div>
 
       <Card className="border border-border p-5 rounded-xl">
-        <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <div>
             <label className="text-xs text-muted-foreground block mb-1">From</label>
             <input

@@ -384,11 +384,11 @@ export default function ProjectDetailPage() {
         <ArrowLeft className="h-4 w-4" /> Back to Projects
       </button>
 
-      <Card className="border border-border p-6 rounded-xl" style={{ borderLeft: `4px solid ${project.color}` }}>
-        <div className="flex items-start justify-between flex-wrap gap-4">
+      <Card className="border border-border p-4 sm:p-6 rounded-xl" style={{ borderLeft: `4px solid ${project.color}` }}>
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-foreground">{project.name}</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground">{project.name}</h1>
               <span className={`text-xs px-2 py-1 rounded-full ${
                 project.status === "ACTIVE" ? "bg-success/10 text-success" :
                 project.status === "ON_HOLD" ? "bg-warning/10 text-warning" :
@@ -426,7 +426,7 @@ export default function ProjectDetailPage() {
               );
             })()}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Select
               value={project.status}
               onValueChange={(v) => updateMutation.mutate({ status: v })}

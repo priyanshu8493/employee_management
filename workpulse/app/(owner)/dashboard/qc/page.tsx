@@ -93,13 +93,11 @@ export default function QcReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">QC Reports</h1>
-          <p className="text-muted-foreground mt-1">
-            Quality control reports submitted by team leaders
-          </p>
-        </div>
+      <div>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">QC Reports</h1>
+        <p className="text-muted-foreground mt-1">
+          Quality control reports submitted by team leaders
+        </p>
       </div>
 
       <DataTable

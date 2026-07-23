@@ -141,9 +141,9 @@ export default function DashboardOverviewPage() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Dashboard Overview</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Dashboard Overview</h1>
         <p className="text-muted-foreground mt-1">Real-time view of your organization</p>
       </div>
 

@@ -91,7 +91,7 @@ export default function TeamTasksPage() {
       <div className="flex items-center gap-3">
         <Users className="h-6 w-6 text-primary" />
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Team Task Assignments</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Team Task Assignments</h1>
           <p className="text-sm text-muted-foreground">Assign subtasks to your team members</p>
         </div>
       </div>

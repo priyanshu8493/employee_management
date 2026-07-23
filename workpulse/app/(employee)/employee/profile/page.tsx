@@ -97,9 +97,9 @@ export default function EmployeeProfilePage() {
     .toUpperCase() || "?";
 
   return (
-    <div className="space-y-8 max-w-2xl">
+    <div className="space-y-6 sm:space-y-8 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Profile</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Profile</h1>
         <p className="text-muted-foreground mt-1">Manage your account settings</p>
       </div>
 

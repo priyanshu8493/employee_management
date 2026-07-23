@@ -49,7 +49,7 @@ export default function LiveActivityPage() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-foreground">Live Activity</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Live Activity</h1>
             {count > 0 && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-success/10 text-success">
                 <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />

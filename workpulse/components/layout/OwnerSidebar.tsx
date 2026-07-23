@@ -59,9 +59,12 @@ export function OwnerSidebar() {
             <Clock className="h-6 w-6 text-primary" />
             <span className="font-bold text-lg text-sidebar-foreground">WorkPulse</span>
           </Link>
-          <button onClick={() => setOpen(false)} className="lg:hidden text-sidebar-foreground">
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <ThemeToggle className="h-8 w-8 border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent" />
+            <button onClick={() => setOpen(false)} className="lg:hidden text-sidebar-foreground p-1">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         <nav className="flex-1 py-4 px-3 space-y-1">
@@ -101,18 +104,15 @@ export function OwnerSidebar() {
               <p className="text-xs text-muted-foreground truncate">Owner</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <ThemeToggle className="border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent" />
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent"
-              onClick={() => signOut({ callbackUrl: "/login" })}
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
+          </Button>
         </div>
       </aside>
 

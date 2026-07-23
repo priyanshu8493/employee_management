@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
@@ -100,15 +101,18 @@ export function OwnerSidebar() {
               <p className="text-xs text-muted-foreground truncate">Owner</p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent"
-            onClick={() => signOut({ callbackUrl: "/login" })}
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </Button>
+          <div className="flex gap-2">
+            <ThemeToggle className="border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent" />
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent"
+              onClick={() => signOut({ callbackUrl: "/login" })}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </aside>
 

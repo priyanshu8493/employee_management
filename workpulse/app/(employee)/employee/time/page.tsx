@@ -8,8 +8,10 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { DataTable } from "@/components/shared/DataTable";
 import { formatDuration, formatTime, formatDurationShort } from "@/lib/utils";
 import { startOfWeek } from "date-fns";
+import { useChartColors } from "@/lib/chartColors";
 
 export default function EmployeeTimePage() {
+  const chartColors = useChartColors();
   const today = new Date();
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
@@ -157,15 +159,15 @@ export default function EmployeeTimePage() {
         <div className="h-48 sm:h-56">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={weekChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2E3147" />
-              <XAxis dataKey="day" stroke="#94A3B8" fontSize={12} />
-              <YAxis stroke="#94A3B8" fontSize={12} unit="h" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+              <XAxis dataKey="day" stroke={chartColors.axis} fontSize={12} />
+              <YAxis stroke={chartColors.axis} fontSize={12} unit="h" />
               <Tooltip
                 contentStyle={{
-                  background: "#232640",
-                  border: "1px solid #2E3147",
+                  background: chartColors.tooltipBg,
+                  border: `1px solid ${chartColors.tooltipBorder}`,
                   borderRadius: "8px",
-                  color: "#F1F5F9",
+                  color: chartColors.tooltipText,
                 }}
               />
               <Bar dataKey="hours" fill="#6C63FF" radius={[4, 4, 0, 0]} />

@@ -33,6 +33,7 @@ import {
   Cell,
 } from "recharts";
 import { formatDurationShort, formatDuration, formatDate } from "@/lib/utils";
+import { useChartColors } from "@/lib/chartColors";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +45,7 @@ import {
 const COLORS = ["#6C63FF", "#22C55E", "#F59E0B", "#EF4444", "#8B5CF6"];
 
 export default function EmployeeDetailPage() {
+  const chartColors = useChartColors();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -422,10 +424,10 @@ export default function EmployeeDetailPage() {
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={monthlyChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2E3147" />
-                    <XAxis dataKey="month" stroke="#94A3B8" fontSize={11} />
-                    <YAxis stroke="#94A3B8" fontSize={11} />
-                    <Tooltip contentStyle={{ background: "#232640", border: "1px solid #2E3147", borderRadius: "8px", color: "#F1F5F9" }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                    <XAxis dataKey="month" stroke={chartColors.axis} fontSize={11} />
+                    <YAxis stroke={chartColors.axis} fontSize={11} />
+                    <Tooltip contentStyle={{ background: chartColors.tooltipBg, border: `1px solid ${chartColors.tooltipBorder}`, borderRadius: "8px", color: chartColors.tooltipText }} />
                     <Bar dataKey="hours" fill="#6C63FF" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -449,7 +451,7 @@ export default function EmployeeDetailPage() {
                         <Cell key={i} fill={COLORS[i % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ background: "#232640", border: "1px solid #2E3147", borderRadius: "8px", color: "#F1F5F9" }} />
+                    <Tooltip contentStyle={{ background: chartColors.tooltipBg, border: `1px solid ${chartColors.tooltipBorder}`, borderRadius: "8px", color: chartColors.tooltipText }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -553,10 +555,10 @@ export default function EmployeeDetailPage() {
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={leaveStats?.monthlyBreakdown || []}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2E3147" />
-                  <XAxis dataKey="month" stroke="#94A3B8" fontSize={11} />
-                  <YAxis stroke="#94A3B8" fontSize={11} allowDecimals={false} />
-                  <Tooltip contentStyle={{ background: "#232640", border: "1px solid #2E3147", borderRadius: "8px", color: "#F1F5F9" }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                  <XAxis dataKey="month" stroke={chartColors.axis} fontSize={11} />
+                  <YAxis stroke={chartColors.axis} fontSize={11} allowDecimals={false} />
+                  <Tooltip contentStyle={{ background: chartColors.tooltipBg, border: `1px solid ${chartColors.tooltipBorder}`, borderRadius: "8px", color: chartColors.tooltipText }} />
                   <Bar dataKey="count" fill="#F59E0B" radius={[4, 4, 0, 0]} name="Leaves" />
                 </BarChart>
               </ResponsiveContainer>
@@ -644,10 +646,10 @@ export default function EmployeeDetailPage() {
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={breakStats.monthlyBreakdown || []}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2E3147" />
-                  <XAxis dataKey="month" stroke="#94A3B8" fontSize={11} />
-                  <YAxis stroke="#94A3B8" fontSize={11} allowDecimals={false} />
-                  <Tooltip contentStyle={{ background: "#232640", border: "1px solid #2E3147", borderRadius: "8px", color: "#F1F5F9" }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                  <XAxis dataKey="month" stroke={chartColors.axis} fontSize={11} />
+                  <YAxis stroke={chartColors.axis} fontSize={11} allowDecimals={false} />
+                  <Tooltip contentStyle={{ background: chartColors.tooltipBg, border: `1px solid ${chartColors.tooltipBorder}`, borderRadius: "8px", color: chartColors.tooltipText }} />
                   <Bar dataKey="count" fill="#6C63FF" radius={[4, 4, 0, 0]} name="Breaks" />
                 </BarChart>
               </ResponsiveContainer>

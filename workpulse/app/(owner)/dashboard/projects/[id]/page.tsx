@@ -43,6 +43,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Plus, Trash2, Edit3, Users, Archive } from "lucide-react";
 import { formatDuration, formatTime, formatDate, formatDurationShort } from "@/lib/utils";
+import { useChartColors } from "@/lib/chartColors";
 
 const STATUS_ORDER = ["TODO", "IN_PROGRESS", "DONE"] as const;
 const PRESET_COLORS = ["#6C63FF", "#22C55E", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4", "#EC4899", "#14B8A6"];
@@ -61,6 +62,8 @@ export default function ProjectDetailPage() {
   const [assignSubtask, setAssignSubtask] = useState<any>(null);
   const [assignSelectedIds, setAssignSelectedIds] = useState<string[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const chartColors = useChartColors();
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
@@ -582,11 +585,11 @@ export default function ProjectDetailPage() {
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={burndownData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2E3147" />
-                    <XAxis dataKey="date" stroke="#94A3B8" fontSize={11} />
-                    <YAxis stroke="#94A3B8" fontSize={11} unit="h" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                    <XAxis dataKey="date" stroke={chartColors.axis} fontSize={11} />
+                    <YAxis stroke={chartColors.axis} fontSize={11} unit="h" />
                     <Tooltip
-                      contentStyle={{ background: "#232640", border: "1px solid #2E3147", borderRadius: "8px", color: "#F1F5F9" }}
+                      contentStyle={{ background: chartColors.tooltipBg, border: `1px solid ${chartColors.tooltipBorder}`, borderRadius: "8px", color: chartColors.tooltipText }}
                     />
                     <Bar dataKey="hours" fill={project.color} radius={[4, 4, 0, 0]} />
                   </BarChart>
@@ -611,11 +614,11 @@ export default function ProjectDetailPage() {
                       dataKey="value"
                     >
                       <Cell fill={project.color} />
-                      <Cell fill="#2E3147" />
+                      <Cell fill={chartColors.emptyBar} />
                     </Pie>
-                    <Legend wrapperStyle={{ color: "#94A3B8", fontSize: "12px" }} />
+                    <Legend wrapperStyle={{ color: chartColors.legendText, fontSize: "12px" }} />
                     <Tooltip
-                      contentStyle={{ background: "#232640", border: "1px solid #2E3147", borderRadius: "8px", color: "#F1F5F9" }}
+                      contentStyle={{ background: chartColors.tooltipBg, border: `1px solid ${chartColors.tooltipBorder}`, borderRadius: "8px", color: chartColors.tooltipText }}
                     />
                   </PieChart>
                 </ResponsiveContainer>

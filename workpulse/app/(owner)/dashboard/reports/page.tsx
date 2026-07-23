@@ -24,6 +24,7 @@ import {
 } from "recharts";
 import { Download, FileBarChart } from "lucide-react";
 import { formatDurationShort, formatDuration } from "@/lib/utils";
+import { useChartColors } from "@/lib/chartColors";
 
 const PRESETS: Record<string, { label: string; getRange: () => { start: string; end: string } }> = {
   today: {
@@ -67,6 +68,7 @@ export default function ReportsPage() {
   const [preset, setPreset] = useState("thisMonth");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  const chartColors = useChartColors();
 
   const range = useMemo(() => preset === "custom"
     ? { start: customStart ? new Date(customStart).toISOString() : "", end: customEnd ? new Date(customEnd + "T23:59:59").toISOString() : "" }
@@ -235,11 +237,11 @@ export default function ReportsPage() {
                     hours: e.totalHours,
                   }))}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2E3147" />
-                  <XAxis dataKey="name" stroke="#94A3B8" fontSize={12} />
-                  <YAxis stroke="#94A3B8" fontSize={12} unit="h" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                  <XAxis dataKey="name" stroke={chartColors.axis} fontSize={12} />
+                  <YAxis stroke={chartColors.axis} fontSize={12} unit="h" />
                   <Tooltip
-                    contentStyle={{ background: "#232640", border: "1px solid #2E3147", borderRadius: "8px", color: "#F1F5F9" }}
+                    contentStyle={{ background: chartColors.tooltipBg, border: `1px solid ${chartColors.tooltipBorder}`, borderRadius: "8px", color: chartColors.tooltipText }}
                   />
                   <Bar dataKey="hours" fill="#6C63FF" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -259,10 +261,10 @@ export default function ReportsPage() {
                   }))}
                   margin={{ bottom: 120, left: 10, right: 10 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2E3147" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
                   <XAxis
                     dataKey="name"
-                    stroke="#94A3B8"
+                    stroke={chartColors.axis}
                     fontSize={11}
                     tick={(props) => {
                       const { x, y, payload } = props;
@@ -272,16 +274,16 @@ export default function ReportsPage() {
                         : payload.value;
                       return (
                         <g transform={`translate(${x},${y})`}>
-                          <text x={0} y={0} dy={10} textAnchor="end" fill="#94A3B8" fontSize={11} transform="rotate(-35)">
+                          <text x={0} y={0} dy={10} textAnchor="end" fill={chartColors.axis} fontSize={11} transform="rotate(-35)">
                             {label}
                           </text>
                         </g>
                       );
                     }}
                   />
-                  <YAxis stroke="#94A3B8" fontSize={12} unit="h" />
+                  <YAxis stroke={chartColors.axis} fontSize={12} unit="h" />
                   <Tooltip
-                    contentStyle={{ background: "#232640", border: "1px solid #2E3147", borderRadius: "8px", color: "#F1F5F9" }}
+                    contentStyle={{ background: chartColors.tooltipBg, border: `1px solid ${chartColors.tooltipBorder}`, borderRadius: "8px", color: chartColors.tooltipText }}
                   />
                   <Bar dataKey="hours" fill="#22C55E" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -301,11 +303,11 @@ export default function ReportsPage() {
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={heatmapData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2E3147" />
-                    <XAxis dataKey="date" stroke="#94A3B8" fontSize={10} angle={-45} textAnchor="end" height={60} />
-                    <YAxis stroke="#94A3B8" fontSize={11} unit="h" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                    <XAxis dataKey="date" stroke={chartColors.axis} fontSize={10} angle={-45} textAnchor="end" height={60} />
+                    <YAxis stroke={chartColors.axis} fontSize={11} unit="h" />
                     <Tooltip
-                      contentStyle={{ background: "#232640", border: "1px solid #2E3147", borderRadius: "8px", color: "#F1F5F9" }}
+                      contentStyle={{ background: chartColors.tooltipBg, border: `1px solid ${chartColors.tooltipBorder}`, borderRadius: "8px", color: chartColors.tooltipText }}
                     />
                     <Bar dataKey="hours" fill="#F59E0B" radius={[2, 2, 0, 0]} />
                   </BarChart>

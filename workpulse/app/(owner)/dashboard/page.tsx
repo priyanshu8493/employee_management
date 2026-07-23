@@ -28,10 +28,12 @@ import {
   Legend,
 } from "recharts";
 import { formatDuration, formatDurationShort } from "@/lib/utils";
+import { useChartColors } from "@/lib/chartColors";
 
 const COLORS = ["#6C63FF", "#22C55E", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4"];
 
 export default function DashboardOverviewPage() {
+  const chartColors = useChartColors();
   const router = useRouter();
 
   const { data, isLoading } = useQuery({
@@ -259,15 +261,15 @@ export default function DashboardOverviewPage() {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2E3147" />
-                <XAxis dataKey="day" stroke="#94A3B8" fontSize={12} />
-                <YAxis stroke="#94A3B8" fontSize={12} unit="h" />
+                <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                <XAxis dataKey="day" stroke={chartColors.axis} fontSize={12} />
+                <YAxis stroke={chartColors.axis} fontSize={12} unit="h" />
                 <Tooltip
                   contentStyle={{
-                    background: "#232640",
-                    border: "1px solid #2E3147",
+                    background: chartColors.tooltipBg,
+                    border: `1px solid ${chartColors.tooltipBorder}`,
                     borderRadius: "8px",
-                    color: "#F1F5F9",
+                    color: chartColors.tooltipText,
                   }}
                 />
                 {projectNames.slice(0, 6).map((name, i) => (

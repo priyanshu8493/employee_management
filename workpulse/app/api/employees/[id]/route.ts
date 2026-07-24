@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     startOfWeek.setDate(startOfWeek.getDate() - ((startOfWeek.getDay() + 6) % 7));
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [employee, todayAgg, weekAgg, monthAgg, projectBreakdown] = await Promise.all([
+    const [employee, todayAgg, weekAgg, monthAgg, projectBreakdown, activeEntry] = await Promise.all([
       prisma.user.findUnique({
         where: { id },
         select: {
@@ -55,6 +55,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         where: { userId: id, durationMinutes: { not: null } },
         _sum: { durationMinutes: true },
       }),
+      prisma.timeEntry.findFirst({
+        where: { userId: id, checkOutAt: null },
+        select: { checkInAt: true, totalPauseMs: true },
+      }),
     ]);
 
     if (!employee) return apiError("Employee not found", "NOT_FOUND", 404);
@@ -71,10 +75,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return { ...project, totalMinutes: p._sum.durationMinutes || 0 };
     });
 
+    const todayBase = todayAgg._sum.durationMinutes || 0;
+    const activeMinutes = activeEntry
+      ? Math.max(0, (Date.now() - new Date(activeEntry.checkInAt).getTime() - (activeEntry.totalPauseMs || 0)) / 60000)
+      : 0;
+
     return apiSuccess({
       ...employee,
       stats: {
-        todayMinutes: todayAgg._sum.durationMinutes || 0,
+        todayMinutes: todayBase + activeMinutes,
         weekMinutes: weekAgg._sum.durationMinutes || 0,
         monthMinutes: monthAgg._sum.durationMinutes || 0,
         projectBreakdown: projectsWithNames,

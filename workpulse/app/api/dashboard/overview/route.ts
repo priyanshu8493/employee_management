@@ -147,19 +147,24 @@ export async function GET() {
     });
 
     const todayMap = new Map<string, typeof todayEntries[0] & { hoursToday: number; breakMinutes: number; isActive: boolean }>();
+    const nowMs = Date.now();
     for (const entry of todayEntries) {
       if (!entry.user) continue;
       const existing = todayMap.get(entry.user.id);
       const breakMs = entry.totalPauseMs || 0;
+      const isEntryActive = !entry.checkOutAt;
+      const entryMinutes = isEntryActive
+        ? Math.max(0, (nowMs - new Date(entry.checkInAt).getTime() - breakMs) / 60000)
+        : (entry.durationMinutes || 0);
       if (existing) {
-        existing.hoursToday += entry.durationMinutes || 0;
+        existing.hoursToday += entryMinutes;
         existing.breakMinutes += Math.round(breakMs / 60000);
       } else {
         todayMap.set(entry.user.id, {
           ...entry,
-          hoursToday: entry.durationMinutes || 0,
+          hoursToday: entryMinutes,
           breakMinutes: Math.round(breakMs / 60000),
-          isActive: !entry.checkOutAt,
+          isActive: isEntryActive,
         });
       }
     }

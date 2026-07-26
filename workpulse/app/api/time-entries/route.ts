@@ -47,7 +47,10 @@ export async function GET(request: NextRequest) {
       prisma.timeEntry.count({ where }),
     ]);
 
-    return apiSuccess(entries, { total, page, limit, totalPages: Math.ceil(total / limit) });
+    const serverNow = Date.now();
+    const enrichedEntries = entries.map((e) => ({ ...e, serverNow }));
+
+    return apiSuccess(enrichedEntries, { total, page, limit, totalPages: Math.ceil(total / limit) });
   } catch (error) {
     return handleApiError(error);
   }

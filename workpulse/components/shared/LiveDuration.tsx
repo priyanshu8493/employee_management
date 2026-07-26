@@ -16,6 +16,7 @@ interface LiveDurationProps {
   checkInAt: string;
   totalPauseMs?: number;
   pausedAt?: string | null;
+  serverNow?: number;
 }
 
 export function LiveDuration({
@@ -23,6 +24,7 @@ export function LiveDuration({
   checkInAt,
   totalPauseMs = 0,
   pausedAt,
+  serverNow,
 }: LiveDurationProps) {
   const isActive = durationMinutes == null;
 
@@ -35,6 +37,7 @@ export function LiveDuration({
       checkInAt={checkInAt}
       totalPauseMs={totalPauseMs}
       pausedAt={pausedAt}
+      serverNow={serverNow}
     />
   );
 }
@@ -43,26 +46,31 @@ function LiveCounter({
   checkInAt,
   totalPauseMs,
   pausedAt,
+  serverNow,
 }: {
   checkInAt: string;
   totalPauseMs: number;
   pausedAt?: string | null;
+  serverNow?: number;
 }) {
   const startRef = useRef(new Date(checkInAt).getTime());
+  const offsetRef = useRef(serverNow != null ? serverNow - Date.now() : 0);
   const [elapsed, setElapsed] = useState("0h 0m");
 
   useEffect(() => {
     startRef.current = new Date(checkInAt).getTime();
-  }, [checkInAt]);
+    if (serverNow != null) {
+      offsetRef.current = serverNow - Date.now();
+    }
+  }, [checkInAt, serverNow]);
 
   useEffect(() => {
     const tick = () => {
-      const now = Date.now();
+      const now = Date.now() + offsetRef.current;
       let elapsedMs = now - startRef.current - totalPauseMs;
 
       if (pausedAt) {
         const pauseStart = new Date(pausedAt).getTime();
-        const pauseElapsed = now - pauseStart;
         elapsedMs = pauseStart - startRef.current - totalPauseMs;
         if (elapsedMs < 0) elapsedMs = 0;
       }

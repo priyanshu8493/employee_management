@@ -381,6 +381,7 @@ export default function ProjectDetailPage() {
         checkInAt={e.checkInAt}
         totalPauseMs={e.totalPauseMs || 0}
         pausedAt={e.pausedAt}
+        serverNow={e.serverNow}
       />
     ) },
     { key: "notes", header: "Notes", render: (e: any) => <span className="text-muted-foreground text-sm truncate max-w-[200px] block">{e.notes || "--"}</span> },

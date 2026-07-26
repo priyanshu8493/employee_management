@@ -108,6 +108,7 @@ export default function EmployeeTimePage() {
           checkInAt={entry.checkInAt}
           totalPauseMs={entry.totalPauseMs || 0}
           pausedAt={entry.pausedAt}
+          serverNow={entry.serverNow}
         />
       ),
     },

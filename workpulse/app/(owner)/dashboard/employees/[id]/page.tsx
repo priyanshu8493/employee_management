@@ -33,6 +33,7 @@ import {
   Cell,
 } from "recharts";
 import { formatDurationShort, formatDuration, formatDate } from "@/lib/utils";
+import { LiveDuration } from "@/components/shared/LiveDuration";
 import { useChartColors } from "@/lib/chartColors";
 import {
   Dialog,
@@ -262,7 +263,14 @@ export default function EmployeeDetailPage() {
       </div>
     )},
     { key: "subTask", header: "Task", render: (e: any) => <span className="text-muted-foreground">{e.subTask?.name}</span> },
-    { key: "durationMinutes", header: "Duration", sortable: true, render: (e: any) => formatDuration(e.durationMinutes) },
+    { key: "durationMinutes", header: "Duration", sortable: true, render: (e: any) => (
+      <LiveDuration
+        durationMinutes={e.durationMinutes}
+        checkInAt={e.checkInAt}
+        totalPauseMs={e.totalPauseMs || 0}
+        pausedAt={e.pausedAt}
+      />
+    ) },
     { key: "notes", header: "Notes", render: (e: any) => <span className="text-muted-foreground text-sm truncate max-w-[200px] block">{e.notes || "--"}</span> },
   ];
 

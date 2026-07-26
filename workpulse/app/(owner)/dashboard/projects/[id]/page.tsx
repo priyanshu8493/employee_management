@@ -43,6 +43,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Plus, Trash2, Edit3, Users, Archive } from "lucide-react";
 import { formatDuration, formatTime, formatDate, formatDurationShort } from "@/lib/utils";
+import { LiveDuration } from "@/components/shared/LiveDuration";
 import { useChartColors } from "@/lib/chartColors";
 
 const STATUS_ORDER = ["TODO", "IN_PROGRESS", "DONE"] as const;
@@ -374,7 +375,14 @@ export default function ProjectDetailPage() {
     { key: "user", header: "Employee", render: (e: any) => <span>{e.user?.name || "N/A"}</span> },
     { key: "subTask", header: "SubTask", render: (e: any) => <span className="text-muted-foreground">{e.subTask?.name}</span> },
     { key: "checkInAt", header: "Date", sortable: true, render: (e: any) => formatDate(e.checkInAt) },
-    { key: "durationMinutes", header: "Duration", sortable: true, render: (e: any) => formatDuration(e.durationMinutes) },
+    { key: "durationMinutes", header: "Duration", sortable: true, render: (e: any) => (
+      <LiveDuration
+        durationMinutes={e.durationMinutes}
+        checkInAt={e.checkInAt}
+        totalPauseMs={e.totalPauseMs || 0}
+        pausedAt={e.pausedAt}
+      />
+    ) },
     { key: "notes", header: "Notes", render: (e: any) => <span className="text-muted-foreground text-sm truncate max-w-[200px] block">{e.notes || "--"}</span> },
   ];
 

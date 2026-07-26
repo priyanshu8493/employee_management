@@ -7,6 +7,7 @@ import { Clock, CalendarDays } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { DataTable } from "@/components/shared/DataTable";
 import { formatDuration, formatTime, formatDurationShort } from "@/lib/utils";
+import { LiveDuration } from "@/components/shared/LiveDuration";
 import { startOfWeek } from "date-fns";
 import { useChartColors } from "@/lib/chartColors";
 
@@ -102,7 +103,12 @@ export default function EmployeeTimePage() {
       header: "Duration",
       sortable: true,
       render: (entry: any) => (
-        <span className="font-medium">{formatDuration(entry.durationMinutes)}</span>
+        <LiveDuration
+          durationMinutes={entry.durationMinutes}
+          checkInAt={entry.checkInAt}
+          totalPauseMs={entry.totalPauseMs || 0}
+          pausedAt={entry.pausedAt}
+        />
       ),
     },
     {

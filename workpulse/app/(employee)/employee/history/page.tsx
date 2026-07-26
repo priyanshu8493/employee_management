@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/shared/DataTable";
 import { formatDateTime, formatDuration, formatDurationShort } from "@/lib/utils";
+import { LiveDuration } from "@/components/shared/LiveDuration";
 import { Download } from "lucide-react";
 
 export default function EmployeeHistoryPage() {
@@ -89,7 +90,12 @@ export default function EmployeeHistoryPage() {
       header: "Duration",
       sortable: true,
       render: (entry: any) => (
-        <span className="font-medium">{formatDuration(entry.durationMinutes)}</span>
+        <LiveDuration
+          durationMinutes={entry.durationMinutes}
+          checkInAt={entry.checkInAt}
+          totalPauseMs={entry.totalPauseMs || 0}
+          pausedAt={entry.pausedAt}
+        />
       ),
     },
     {

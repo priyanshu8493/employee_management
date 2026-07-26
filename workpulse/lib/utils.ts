@@ -18,7 +18,7 @@ export function formatDurationShort(minutes: number | null | undefined): string 
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   if (h === 0) return `${m}m`;
-  return `${h}.${Math.round((m / 60) * 10)}h`;
+  return `${h}.${Math.round((m / 60) * 100)}h`;
 }
 
 export function formatDurationHM(minutes: number): string {

@@ -61,6 +61,7 @@ export default function EmployeeDetailPage() {
       return data;
     },
     staleTime: 30000,
+    refetchInterval: 60000,
   });
 
   const { data: mistakes } = useQuery({

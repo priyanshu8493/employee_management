@@ -29,6 +29,7 @@ import {
 import { Plus, LayoutGrid, List, Archive, Edit3, Trash2, Users, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/lib/utils";
 
 const PRESET_COLORS = ["#6C63FF", "#22C55E", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4", "#EC4899", "#14B8A6"];
 
@@ -230,6 +231,12 @@ export default function ProjectsPage() {
       ),
     },
     {
+      key: "startDate",
+      header: "Start Date",
+      sortable: true,
+      render: (p: any) => <span className="text-muted-foreground text-sm">{formatDate(p.startDate)}</span>,
+    },
+    {
       key: "leaders",
       header: "Leaders",
       render: (p: any) => (
@@ -399,7 +406,10 @@ export default function ProjectsPage() {
                     }`}>{project.status}</span>
                   </div>
                   {project.clientName && (
-                    <p className="text-xs text-muted-foreground mb-3">Client: {project.clientName}</p>
+                    <p className="text-xs text-muted-foreground mb-1">Client: {project.clientName}</p>
+                  )}
+                  {project.startDate && (
+                    <p className="text-xs text-muted-foreground mb-3">Start: {formatDate(project.startDate)}</p>
                   )}
                   <ProgressBar
                     value={Math.round(totalHours * 10) / 10}

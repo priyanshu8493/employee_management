@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { DataTable } from "@/components/shared/DataTable";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -19,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, UserCheck, UserX, AlertTriangle, Trash2, CalendarDays, Plus, Coffee } from "lucide-react";
+import { ArrowLeft, UserCheck, UserX, AlertTriangle, Trash2, CalendarDays, Plus, Coffee, Edit3 } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -52,6 +53,9 @@ export default function EmployeeDetailPage() {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editEntry, setEditEntry] = useState<any>(null);
+  const [editDuration, setEditDuration] = useState("");
+  const [editNotes, setEditNotes] = useState("");
 
   const { data: employee, isLoading } = useQuery({
     queryKey: ["employee", id],
@@ -186,6 +190,26 @@ export default function EmployeeDetailPage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const editEntryMutation = useMutation({
+    mutationFn: async ({ timeEntryId, durationMinutes, notes }: { timeEntryId: string; durationMinutes: number; notes: string }) => {
+      const res = await fetch("/api/time-entries", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timeEntryId, durationMinutes, notes }),
+      });
+      const { data, error } = await res.json();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employee-time-entries", id] });
+      queryClient.invalidateQueries({ queryKey: ["employee", id] });
+      toast.success("Time entry updated");
+      setEditEntry(null);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   const monthlyChartData = useMemo(() => {
     const months = Array.from({ length: 12 }, (_, i) => {
       const d = new Date();
@@ -274,6 +298,24 @@ export default function EmployeeDetailPage() {
       />
     ) },
     { key: "notes", header: "Notes", render: (e: any) => <span className="text-muted-foreground text-sm truncate max-w-[200px] block">{e.notes || "--"}</span> },
+    {
+      key: "actions",
+      header: "",
+      render: (e: any) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground h-7 w-7 p-0"
+          onClick={() => {
+            setEditEntry(e);
+            setEditDuration(e.durationMinutes != null ? String(e.durationMinutes) : "");
+            setEditNotes(e.notes || "");
+          }}
+        >
+          <Edit3 className="h-3.5 w-3.5" />
+        </Button>
+      ),
+    },
   ];
 
   return (
@@ -778,6 +820,74 @@ export default function EmployeeDetailPage() {
         variant="destructive"
         onConfirm={() => deleteId && deleteMutation.mutate(deleteId)}
       />
+
+      <Dialog open={!!editEntry} onOpenChange={() => setEditEntry(null)}>
+        <DialogContent className="bg-surface-raised border-border">
+          <DialogHeader>
+            <DialogTitle className="text-foreground flex items-center gap-2">
+              <Edit3 className="h-5 w-5 text-primary" />
+              Edit Time Entry
+            </DialogTitle>
+          </DialogHeader>
+          {editEntry && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-surface text-sm text-muted-foreground">
+                <p><span className="text-foreground font-medium">Date:</span> {formatDate(editEntry.checkInAt)}</p>
+                <p><span className="text-foreground font-medium">Project:</span> {editEntry.project?.name}</p>
+                <p><span className="text-foreground font-medium">Task:</span> {editEntry.subTask?.name}</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">Duration (minutes) *</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={editDuration}
+                  onChange={(e) => setEditDuration(e.target.value)}
+                  className="bg-surface border-border text-foreground"
+                  placeholder="e.g. 120"
+                />
+                <p className="text-xs text-muted-foreground">Current: {editEntry.durationMinutes != null ? `${editEntry.durationMinutes} min` : "Active (not checked out)"}</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">Notes</Label>
+                <Textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  className="bg-surface border-border text-foreground placeholder:text-muted-foreground"
+                  placeholder="Optional notes..."
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditEntry(null)}
+              className="border-border text-foreground"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const mins = parseInt(editDuration, 10);
+                if (isNaN(mins) || mins < 0) {
+                  toast.error("Please enter a valid duration in minutes");
+                  return;
+                }
+                editEntryMutation.mutate({
+                  timeEntryId: editEntry.id,
+                  durationMinutes: mins,
+                  notes: editNotes,
+                });
+              }}
+              disabled={editEntryMutation.isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              {editEntryMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

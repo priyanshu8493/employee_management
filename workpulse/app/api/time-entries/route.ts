@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { apiSuccess, apiError, handleApiError, requireAuth, getAuthSession } from "@/lib/api-utils";
+import { apiSuccess, apiError, handleApiError, requireAuth, requireRole, getAuthSession } from "@/lib/api-utils";
 import { checkInSchema, checkOutSchema } from "@/lib/validations";
 export const runtime = "nodejs";
 
@@ -227,11 +227,109 @@ export async function POST(request: NextRequest) {
       return apiSuccess({ resumedAt: now, durationMs, totalPauseMs });
     }
 
+    if (body.action === "force-checkout") {
+      const ownerSession = await requireRole("OWNER");
+
+      const entry = await prisma.timeEntry.findFirst({
+        where: { id: body.timeEntryId, checkOutAt: null },
+        include: {
+          user: { select: { id: true, name: true } },
+        },
+      });
+      if (!entry) {
+        return apiError("Active time entry not found", "NOT_FOUND", 404);
+      }
+
+      const now = new Date();
+      const totalPauseMs = entry.totalPauseMs || 0;
+      const rawDurationMs = now.getTime() - entry.checkInAt.getTime();
+      const activeDurationMs = Math.max(rawDurationMs - totalPauseMs, 0);
+      const durationMinutes = Math.round(activeDurationMs / 60000);
+
+      const openPause = await prisma.timeEntryPause.findFirst({
+        where: { timeEntryId: entry.id, resumedAt: null },
+        orderBy: { pausedAt: "desc" },
+      });
+      if (openPause) {
+        const openDurationMs = now.getTime() - openPause.pausedAt.getTime();
+        await prisma.timeEntryPause.update({
+          where: { id: openPause.id },
+          data: { resumedAt: now, durationMs: openDurationMs },
+        });
+      }
+
+      const updated = await prisma.timeEntry.update({
+        where: { id: body.timeEntryId },
+        data: {
+          checkOutAt: now,
+          durationMinutes,
+          totalPauseMs: totalPauseMs + (openPause ? (now.getTime() - openPause.pausedAt.getTime()) : 0),
+          pausedAt: null,
+        },
+        include: {
+          project: { select: { id: true, name: true, color: true } },
+          subTask: { select: { id: true, name: true } },
+          user: { select: { id: true, name: true } },
+        },
+      });
+
+      return apiSuccess(updated);
+    }
+
     return apiError("Invalid action", "INVALID_ACTION", 400);
   } catch (error) {
     if (error instanceof Error && error.name === "ZodError") {
       return apiError("Validation failed", "VALIDATION_ERROR", 400);
     }
+    return handleApiError(error);
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const ownerSession = await requireRole("OWNER");
+    const body = await request.json();
+
+    const { timeEntryId, durationMinutes, checkInAt, checkOutAt, notes } = body;
+
+    if (!timeEntryId) {
+      return apiError("timeEntryId is required", "VALIDATION_ERROR", 400);
+    }
+
+    const entry = await prisma.timeEntry.findUnique({
+      where: { id: timeEntryId },
+    });
+    if (!entry) {
+      return apiError("Time entry not found", "NOT_FOUND", 404);
+    }
+
+    const updateData: Record<string, unknown> = {};
+
+    if (durationMinutes !== undefined) {
+      updateData.durationMinutes = Math.max(Math.round(Number(durationMinutes)), 0);
+    }
+    if (checkInAt !== undefined) {
+      updateData.checkInAt = new Date(checkInAt);
+    }
+    if (checkOutAt !== undefined) {
+      updateData.checkOutAt = checkOutAt ? new Date(checkOutAt) : null;
+    }
+    if (notes !== undefined) {
+      updateData.notes = notes || null;
+    }
+
+    const updated = await prisma.timeEntry.update({
+      where: { id: timeEntryId },
+      data: updateData,
+      include: {
+        project: { select: { id: true, name: true, color: true } },
+        subTask: { select: { id: true, name: true } },
+        user: { select: { id: true, name: true } },
+      },
+    });
+
+    return apiSuccess(updated);
+  } catch (error) {
     return handleApiError(error);
   }
 }

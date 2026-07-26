@@ -1,22 +1,26 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Radio } from "lucide-react";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { Radio, Square } from "lucide-react";
 
-function LiveTimerDisplay({ checkInAt }: { checkInAt: string }) {
+function LiveTimerDisplay({ checkInAt, serverNow }: { checkInAt: string; serverNow?: number }) {
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
+    const offset = serverNow != null ? serverNow - Date.now() : 0;
     const start = new Date(checkInAt).getTime();
-    const tick = () => setElapsed(Math.floor((Date.now() - start) / 1000));
+    const tick = () => setElapsed(Math.floor((Date.now() + offset - start) / 1000));
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [checkInAt]);
+  }, [checkInAt, serverNow]);
 
   const h = Math.floor(elapsed / 3600);
   const m = Math.floor((elapsed % 3600) / 60);
@@ -31,6 +35,9 @@ function LiveTimerDisplay({ checkInAt }: { checkInAt: string }) {
 }
 
 export default function LiveActivityPage() {
+  const queryClient = useQueryClient();
+  const [forceStopEntry, setForceStopEntry] = useState<any>(null);
+
   const { data: activeEntries, isLoading } = useQuery({
     queryKey: ["live-activity"],
     queryFn: async () => {
@@ -40,6 +47,26 @@ export default function LiveActivityPage() {
     },
     refetchInterval: 30000,
     staleTime: 5000,
+  });
+
+  const forceStopMutation = useMutation({
+    mutationFn: async (timeEntryId: string) => {
+      const res = await fetch("/api/time-entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "force-checkout", timeEntryId }),
+      });
+      const { data, error } = await res.json();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["live-activity"] });
+      queryClient.invalidateQueries({ queryKey: ["employee-time-entries"] });
+      toast.success("Session stopped successfully");
+      setForceStopEntry(null);
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const count = activeEntries?.length || 0;
@@ -128,14 +155,33 @@ export default function LiveActivityPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">Duration</p>
-                    <LiveTimerDisplay checkInAt={entry.checkInAt} />
+                    <LiveTimerDisplay checkInAt={entry.checkInAt} serverNow={entry.serverNow} />
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-danger text-danger hover:bg-danger/10"
+                    onClick={() => setForceStopEntry(entry)}
+                  >
+                    <Square className="h-3.5 w-3.5 mr-1.5" />
+                    Force Stop
+                  </Button>
                 </div>
               </div>
             </Card>
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!forceStopEntry}
+        onOpenChange={() => setForceStopEntry(null)}
+        title="Force Stop Session"
+        description={`Are you sure you want to force stop ${forceStopEntry?.user?.name}'s active session? This will check them out immediately.`}
+        confirmLabel="Stop Session"
+        variant="destructive"
+        onConfirm={() => forceStopEntry && forceStopMutation.mutate(forceStopEntry.id)}
+      />
     </div>
   );
 }

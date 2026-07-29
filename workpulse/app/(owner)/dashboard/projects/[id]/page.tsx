@@ -311,6 +311,26 @@ export default function ProjectDetailPage() {
       render: (s: any) => <span className="text-muted-foreground">{s._count?.timeEntries || 0}</span>,
     },
     {
+      key: "deliveredToClient",
+      header: "Delivered",
+      render: (s: any) => (
+        <label className="flex items-center gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={s.deliveredToClient}
+            onCheckedChange={(checked) =>
+              updateSubtaskMutation.mutate({
+                subtaskId: s.id,
+                data: { deliveredToClient: !!checked },
+              })
+            }
+          />
+          <span className={`text-xs font-medium ${s.deliveredToClient ? "text-success" : "text-muted-foreground"}`}>
+            {s.deliveredToClient ? "Yes" : "No"}
+          </span>
+        </label>
+      ),
+    },
+    {
       key: "assign",
       header: "Assign",
       render: (s: any) => {
@@ -816,6 +836,15 @@ export default function ProjectDetailPage() {
                   className="bg-surface border-border text-foreground"
                 />
               </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  defaultChecked={editSubtask.deliveredToClient}
+                  id="edit-st-delivered"
+                />
+                <Label htmlFor="edit-st-delivered" className="text-foreground cursor-pointer">
+                  Delivered to client
+                </Label>
+              </div>
               <div className="flex justify-end gap-3">
                 <Button variant="outline" onClick={() => setEditSubtask(null)} className="border-border text-foreground">
                   Cancel
@@ -826,7 +855,8 @@ export default function ProjectDetailPage() {
                     const name = (document.getElementById("edit-st-name") as HTMLInputElement)?.value;
                     const description = (document.getElementById("edit-st-desc") as HTMLTextAreaElement)?.value;
                     const estimatedHours = parseFloat((document.getElementById("edit-st-hours") as HTMLInputElement)?.value || "0");
-                    if (name) updateSubtaskMutation.mutate({ subtaskId: editSubtask.id, data: { name, description, estimatedHours } });
+                    const deliveredToClient = (document.getElementById("edit-st-delivered") as HTMLInputElement)?.checked;
+                    if (name) updateSubtaskMutation.mutate({ subtaskId: editSubtask.id, data: { name, description, estimatedHours, deliveredToClient } });
                   }}
                 >
                   Save

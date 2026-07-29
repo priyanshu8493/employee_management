@@ -90,6 +90,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         create: parsed.assignedToIds.map((userId: string) => ({ userId })),
       };
     }
+    if (parsed.deliveredToClient !== undefined) ownerData.deliveredToClient = parsed.deliveredToClient;
 
     const subtask = await prisma.subTask.update({
       where: { id },

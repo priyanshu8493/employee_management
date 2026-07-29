@@ -207,11 +207,32 @@ export default function ProjectDetailPage() {
       if (error) throw new Error(error.message);
       return result;
     },
-    onSuccess: () => {
+    onMutate: async ({ subtaskId, data }) => {
+      await queryClient.cancelQueries({ queryKey: ["project", id] });
+      const previous = queryClient.getQueryData(["project", id]);
+      queryClient.setQueryData(["project", id], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          subTasks: old.subTasks?.map((st: any) =>
+            st.id === subtaskId ? { ...st, ...data } : st
+          ),
+        };
+      });
+      return { previous };
+    },
+    onError: (err: Error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["project", id], context.previous);
+      }
+      toast.error(err.message);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["project", id] });
+    },
+    onSuccess: () => {
       setEditSubtask(null);
     },
-    onError: (err: Error) => toast.error(err.message),
   });
 
   if (isLoading) {

@@ -314,7 +314,7 @@ export default function ProjectDetailPage() {
       key: "deliveredToClient",
       header: "Delivered",
       render: (s: any) => (
-        <label className="flex items-center gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2">
           <Checkbox
             checked={s.deliveredToClient}
             onCheckedChange={(checked) =>
@@ -327,7 +327,7 @@ export default function ProjectDetailPage() {
           <span className={`text-xs font-medium ${s.deliveredToClient ? "text-success" : "text-muted-foreground"}`}>
             {s.deliveredToClient ? "Yes" : "No"}
           </span>
-        </label>
+        </div>
       ),
     },
     {

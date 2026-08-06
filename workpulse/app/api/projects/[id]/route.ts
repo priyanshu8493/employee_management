@@ -22,7 +22,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         subTasks: {
           orderBy: { createdAt: "asc" },
           include: {
-            _count: { select: { timeEntries: true } },
+            timeEntries: {
+              where: { durationMinutes: { not: null } },
+              select: { durationMinutes: true },
+            },
             assignments: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
           },
         },

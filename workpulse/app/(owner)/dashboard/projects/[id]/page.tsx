@@ -327,9 +327,12 @@ export default function ProjectDetailPage() {
       render: (s: any) => <span className="text-muted-foreground">{s.estimatedHours || "--"}</span>,
     },
     {
-      key: "entries",
-      header: "Time Entries",
-      render: (s: any) => <span className="text-muted-foreground">{s._count?.timeEntries || 0}</span>,
+      key: "timeLogged",
+      header: "Time Logged",
+      render: (s: any) => {
+        const minutes = (s.timeEntries || []).reduce((sum: number, e: any) => sum + (e.durationMinutes || 0), 0);
+        return <span className="text-muted-foreground">{formatDuration(minutes)}</span>;
+      },
     },
     {
       key: "deliveredToClient",

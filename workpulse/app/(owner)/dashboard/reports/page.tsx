@@ -102,10 +102,37 @@ export default function ReportsPage() {
     enabled: !!range.start,
   });
 
-  const csvEscape = (value: string | number | null | undefined) => {
-    const str = String(value ?? "");
-    if (/[",\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
-    return str;
+  const exportReport = () => {
+    const reports: EmployeeReport[] = data?.employeeReports || [];
+    if (!reports.length) return;
+
+    const wb = XLSX.utils.book_new();
+
+    if (employeeId !== "all") {
+      const report = reports[0];
+      if (!report) return;
+      const sheetName = (report.employee?.name || "Employee").replace(/[\\/?*[\]:]/g, " ").slice(0, 31);
+      XLSX.utils.book_append_sheet(wb, buildStyledSheet(report), sheetName || "Employee");
+      const name = (report.employee?.name || "employee").replace(/\s+/g, "-").toLowerCase();
+      XLSX.writeFile(wb, `employee-report-${name}-${preset}.xlsx`);
+      return;
+    }
+
+    const usedNames = new Set<string>();
+    reports.forEach((report, i) => {
+      const ws = buildStyledSheet(report);
+      let sheetName = (report.employee?.name || `Employee ${i + 1}`).replace(/[\\/?*[\]:]/g, " ").slice(0, 31);
+      let unique = sheetName;
+      let n = 2;
+      while (usedNames.has(unique)) {
+        const suffix = ` (${n})`;
+        unique = `${sheetName.slice(0, 31 - suffix.length)}${suffix}`;
+        n++;
+      }
+      usedNames.add(unique);
+      XLSX.utils.book_append_sheet(wb, ws, unique);
+    });
+    XLSX.writeFile(wb, `employee-reports-${preset}.xlsx`);
   };
 
   type EmployeeReport = {
@@ -222,44 +249,6 @@ export default function ReportsPage() {
     return ws;
   };
 
-  const exportCSV = () => {
-    const reports: EmployeeReport[] = data?.employeeReports || [];
-    if (!reports.length) return;
-
-    if (employeeId !== "all") {
-      const report = reports[0];
-      if (!report) return;
-      const rows = buildReportRows(report).map((row) => row.cells);
-      const csv = `\uFEFF${rows.map((row) => row.map(csvEscape).join(",")).join("\n")}`;
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const name = (report.employee?.name || "employee").replace(/\s+/g, "-").toLowerCase();
-      a.href = url;
-      a.download = `employee-report-${name}-${preset}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-      return;
-    }
-
-    const wb = XLSX.utils.book_new();
-    const usedNames = new Set<string>();
-    reports.forEach((report, i) => {
-      const ws = buildStyledSheet(report);
-      let sheetName = (report.employee?.name || `Employee ${i + 1}`).replace(/[\\/?*[\]:]/g, " ").slice(0, 31);
-      let unique = sheetName;
-      let n = 2;
-      while (usedNames.has(unique)) {
-        const suffix = ` (${n})`;
-        unique = `${sheetName.slice(0, 31 - suffix.length)}${suffix}`;
-        n++;
-      }
-      usedNames.add(unique);
-      XLSX.utils.book_append_sheet(wb, ws, unique);
-    });
-    XLSX.writeFile(wb, `employee-reports-${preset}.xlsx`);
-  };
-
   const employeeColumns = [
     { key: "name", header: "Employee", sortable: true, render: (e: any) => <span className="font-medium">{e.name}</span> },
     { key: "totalHours", header: "Total Hours", sortable: true, render: (e: any) => <span>{e.totalHours}h</span> },
@@ -325,11 +314,11 @@ export default function ReportsPage() {
         <Button
           variant="outline"
           className="border-border text-foreground"
-          onClick={exportCSV}
+          onClick={exportReport}
           disabled={!data || (!data.employeeReports?.length && !data.employeeHours?.length)}
         >
           <Download className="h-4 w-4 mr-2" />
-          Export CSV
+          Export Excel
         </Button>
       </div>
 

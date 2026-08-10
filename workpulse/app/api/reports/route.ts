@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get("endDate");
     const projectIds = searchParams.get("projectIds")?.split(",").filter(Boolean);
     const employeeIds = searchParams.get("employeeIds")?.split(",").filter(Boolean);
+    const employeeId = searchParams.get("employeeId");
 
     const timeEntryWhere: Record<string, unknown> = {};
     if (startDate) timeEntryWhere.checkInAt = { gte: new Date(startDate) };
@@ -23,6 +24,7 @@ export async function GET(request: NextRequest) {
     }
     if (projectIds?.length) timeEntryWhere.projectId = { in: projectIds };
     if (employeeIds?.length) timeEntryWhere.userId = { in: employeeIds };
+    if (employeeId) timeEntryWhere.userId = employeeId;
 
     const [allEmployeeHours, allProjectHours, allSubTaskHours, allUsers, allProjects, allSubTasks] = await Promise.all([
       prisma.timeEntry.groupBy({
@@ -44,7 +46,7 @@ export async function GET(request: NextRequest) {
         select: { id: true, name: true, email: true, avatarUrl: true },
       }),
       prisma.project.findMany({
-        select: { id: true, name: true, color: true, estimatedHours: true, status: true },
+        select: { id: true, name: true, clientName: true, color: true, estimatedHours: true, status: true },
       }),
       prisma.subTask.findMany({
         select: { id: true, name: true, status: true },
@@ -144,11 +146,81 @@ export async function GET(request: NextRequest) {
       heatmap[day] = (heatmap[day] || 0) + (entry._sum?.durationMinutes || 0);
     }
 
+    let employeeReport: Record<string, unknown> | null = null;
+    if (employeeId) {
+      const employee = await prisma.user.findUnique({
+        where: { id: employeeId },
+        select: { id: true, name: true, email: true, phone: true, designation: true },
+      });
+
+      const leaveWhere: { userId: string; date?: Record<string, unknown> } = { userId: employeeId };
+      if (startDate || endDate) {
+        leaveWhere.date = {};
+        if (startDate) leaveWhere.date.gte = new Date(startDate);
+        if (endDate) leaveWhere.date.lte = new Date(endDate);
+      }
+
+      const qcWhere: { employeeId: string; qcReport?: Record<string, unknown> } = { employeeId };
+      if (startDate || endDate) {
+        qcWhere.qcReport = {};
+        if (startDate) qcWhere.qcReport.date = { gte: new Date(startDate) };
+        if (endDate) {
+          qcWhere.qcReport.date = {
+            ...(qcWhere.qcReport.date || {}),
+            lte: new Date(endDate),
+          };
+        }
+      }
+
+      const [entries, totalLeaves, qcFlags] = await Promise.all([
+        prisma.timeEntry.findMany({
+          where: { ...timeEntryWhere, durationMinutes: { not: null } },
+          select: { checkInAt: true, durationMinutes: true, totalPauseMs: true, projectId: true },
+        }),
+        prisma.leave.count({ where: leaveWhere }),
+        prisma.qcMistake.count({ where: qcWhere }),
+      ]);
+
+      const workingDays = new Set(
+        entries.map((e) => new Date(e.checkInAt).toISOString().split("T")[0])
+      ).size;
+      const totalWorkingMinutes = entries.reduce((acc, e) => acc + (e.durationMinutes || 0), 0);
+      const totalIdleMs = entries.reduce((acc, e) => acc + (e.totalPauseMs || 0), 0);
+
+      const perProject = new Map<string, number>();
+      for (const e of entries) {
+        if (!e.projectId) continue;
+        perProject.set(e.projectId, (perProject.get(e.projectId) || 0) + (e.durationMinutes || 0));
+      }
+
+      const projectSummary = [...perProject.entries()]
+        .map(([projectId, minutes]) => {
+          const proj = projectMap.get(projectId);
+          return {
+            project: proj?.name || "Unknown",
+            client: proj?.clientName || "",
+            hours: Math.round((minutes / 60) * 10) / 10,
+          };
+        })
+        .sort((a, b) => b.hours - a.hours);
+
+      employeeReport = {
+        employee,
+        totalWorkingDays: workingDays,
+        totalLeaves,
+        totalWorkingHours: Math.round((totalWorkingMinutes / 60) * 10) / 10,
+        totalIdleHours: Math.round((totalIdleMs / 3600000) * 10) / 10,
+        projectSummary,
+        qcFlags,
+      };
+    }
+
     return apiSuccess({
       employeeHours: employeesWithTime,
       projectHours: projectsWithTime,
       subTaskHours: subTasksWithTime,
       heatmap,
+      employeeReport,
     });
   } catch (error) {
     return handleApiError(error);

@@ -68,7 +68,18 @@ export default function ReportsPage() {
   const [preset, setPreset] = useState("thisMonth");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  const [employeeId, setEmployeeId] = useState("all");
   const chartColors = useChartColors();
+
+  const { data: employees } = useQuery({
+    queryKey: ["employees"],
+    queryFn: async () => {
+      const res = await fetch("/api/employees");
+      const { data } = await res.json();
+      return data;
+    },
+    staleTime: 60000,
+  });
 
   const range = useMemo(() => preset === "custom"
     ? { start: customStart ? new Date(customStart).toISOString() : "", end: customEnd ? new Date(customEnd + "T23:59:59").toISOString() : "" }
@@ -76,11 +87,12 @@ export default function ReportsPage() {
   [preset, customStart, customEnd]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["reports", range.start, range.end],
+    queryKey: ["reports", range.start, range.end, employeeId],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (range.start) params.set("startDate", range.start);
       if (range.end) params.set("endDate", range.end);
+      if (employeeId && employeeId !== "all") params.set("employeeId", employeeId);
       const res = await fetch(`/api/reports?${params}`);
       const { data } = await res.json();
       return data;
@@ -89,7 +101,48 @@ export default function ReportsPage() {
     enabled: !!range.start,
   });
 
+  const csvEscape = (value: string | number | null | undefined) => {
+    const str = String(value ?? "");
+    if (/[",\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
+    return str;
+  };
+
   const exportCSV = () => {
+    const report = data?.employeeReport;
+    if (report) {
+      const rows: Array<Array<string | number | null | undefined>> = [];
+      rows.push(["Employee Details"]);
+      rows.push(["Employee Name", report.employee?.name || ""]);
+      rows.push(["Designation", report.employee?.designation || ""]);
+      rows.push(["Ph No", report.employee?.phone || ""]);
+      rows.push([]);
+      rows.push(["1. Attendance & Time Utilization"]);
+      rows.push(["Total Working Days", report.totalWorkingDays]);
+      rows.push(["Total Leave", report.totalLeaves]);
+      rows.push(["Total Working Hours", `${report.totalWorkingHours}h`]);
+      rows.push(["Total Idle Hours/breaks", `${report.totalIdleHours}h`]);
+      rows.push([]);
+      rows.push(["2. Project-wise Work Summary"]);
+      rows.push(["Project", "Client", "Hours"]);
+      (report.projectSummary || []).forEach((p: { project: string; client: string; hours: number }) => {
+        rows.push([p.project, p.client, `${p.hours}h`]);
+      });
+      rows.push([]);
+      rows.push(["4. Quality Metrics"]);
+      rows.push(["Total number of QC flag", report.qcFlags]);
+
+      const csv = `\uFEFF${rows.map((row) => row.map(csvEscape).join(",")).join("\n")}`;
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const name = (report.employee?.name || "employee").replace(/\s+/g, "-").toLowerCase();
+      a.href = url;
+      a.download = `employee-report-${name}-${preset}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+
     const employeeData = data?.employeeHours || [];
     if (!employeeData.length) return;
     const headers = ["Employee", "Total Hours", "Project Breakdown"];
@@ -98,8 +151,8 @@ export default function ReportsPage() {
       e.totalHours,
       (e.projectBreakdown || []).map((p: any) => `${p.name}: ${p.hours}h`).join("; "),
     ]);
-    const csv = [headers.join(","), ...rows.map((r: string[]) => r.join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
+    const csv = `\uFEFF${[headers.join(","), ...rows.map((r: string[]) => r.join(","))].join("\n")}`;
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -174,7 +227,7 @@ export default function ReportsPage() {
           variant="outline"
           className="border-border text-foreground"
           onClick={exportCSV}
-          disabled={!data?.employeeHours?.length}
+          disabled={!data || (!data.employeeReport && !data.employeeHours?.length)}
         >
           <Download className="h-4 w-4 mr-2" />
           Export CSV
@@ -210,6 +263,17 @@ export default function ReportsPage() {
               />
             </>
           )}
+          <Select value={employeeId} onValueChange={(v) => v != null && setEmployeeId(v)}>
+            <SelectTrigger className="w-48 bg-surface border-border text-foreground">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-surface-raised border-border">
+              <SelectItem value="all">All Employees</SelectItem>
+              {(employees || []).map((e: { id: string; name: string }) => (
+                <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </Card>
 

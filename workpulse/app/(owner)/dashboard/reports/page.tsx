@@ -23,7 +23,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Download, FileBarChart } from "lucide-react";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import { formatDurationShort, formatDuration } from "@/lib/utils";
 import { useChartColors } from "@/lib/chartColors";
 
@@ -118,25 +118,109 @@ export default function ReportsPage() {
     qcFlags: number;
   };
 
-  const buildReportRows = (r: EmployeeReport): Array<Array<string | number>> => [
-    ["Employee Details"],
-    ["Employee Name", r.employee?.name || ""],
-    ["Designation", r.employee?.designation || ""],
-    ["Ph No", r.employee?.phone || ""],
-    [],
-    ["1. Attendance & Time Utilization"],
-    ["Total Working Days", r.totalWorkingDays],
-    ["Total Leave", r.totalLeaves],
-    ["Total Working Hours", `${r.totalWorkingHours}h`],
-    ["Total Idle Hours/breaks", `${r.totalIdleHours}h`],
-    [],
-    ["2. Project-wise Work Summary"],
-    ["Project", "Client", "Hours"],
-    ...(r.projectSummary || []).map((p) => [p.project, p.client, `${p.hours}h`]),
-    [],
-    ["4. Quality Metrics"],
-    ["Total number of QC flag", r.qcFlags],
+  type CellKind = "section" | "label" | "value" | "header" | "data";
+
+  const buildReportRows = (r: EmployeeReport): Array<{ cells: Array<string | number>; kinds: CellKind[] }> => [
+    { cells: ["Employee Details"], kinds: ["section"] },
+    { cells: ["Employee Name", r.employee?.name || ""], kinds: ["label", "value"] },
+    { cells: ["Designation", r.employee?.designation || ""], kinds: ["label", "value"] },
+    { cells: ["Ph No", r.employee?.phone || ""], kinds: ["label", "value"] },
+    { cells: [], kinds: [] },
+    { cells: ["1. Attendance & Time Utilization"], kinds: ["section"] },
+    { cells: ["Total Working Days", r.totalWorkingDays], kinds: ["label", "value"] },
+    { cells: ["Total Leave", r.totalLeaves], kinds: ["label", "value"] },
+    { cells: ["Total Working Hours", `${r.totalWorkingHours}h`], kinds: ["label", "value"] },
+    { cells: ["Total Idle Hours/breaks", `${r.totalIdleHours}h`], kinds: ["label", "value"] },
+    { cells: [], kinds: [] },
+    { cells: ["2. Project-wise Work Summary"], kinds: ["section"] },
+    { cells: ["Project", "Client", "Hours"], kinds: ["header", "header", "header"] },
+    ...(r.projectSummary || []).map((p) => ({
+      cells: [p.project, p.client, `${p.hours}h`],
+      kinds: ["data", "data", "data"] as CellKind[],
+    })),
+    { cells: [], kinds: [] },
+    { cells: ["4. Quality Metrics"], kinds: ["section"] },
+    { cells: ["Total number of QC flag", r.qcFlags], kinds: ["label", "value"] },
   ];
+
+  const INDIGO = "6C63FF";
+  const DARK_TEXT = "2D2A43";
+  const BODY_TEXT = "444444";
+  const BORDER_LIGHT = "DDD8F0";
+
+  const cellStyle = (kind: CellKind): XLSX.CellStyle => {
+    const base: XLSX.CellStyle = { alignment: { vertical: "center" } };
+    switch (kind) {
+      case "section":
+        return {
+          ...base,
+          font: { bold: true, sz: 13, color: { rgb: "FFFFFF" } },
+          fill: { patternType: "solid", fgColor: { rgb: INDIGO } },
+          alignment: { horizontal: "left", vertical: "center" },
+        };
+      case "label":
+        return {
+          ...base,
+          font: { bold: true, sz: 11, color: { rgb: DARK_TEXT } },
+          border: { bottom: { style: "thin", color: { rgb: BORDER_LIGHT } } },
+          alignment: { horizontal: "left", vertical: "center" },
+        };
+      case "value":
+        return {
+          ...base,
+          font: { sz: 11, color: { rgb: BODY_TEXT } },
+          border: { bottom: { style: "thin", color: { rgb: BORDER_LIGHT } } },
+          alignment: { horizontal: "left", vertical: "center" },
+        };
+      case "header":
+        return {
+          ...base,
+          font: { bold: true, sz: 11, color: { rgb: "FFFFFF" } },
+          fill: { patternType: "solid", fgColor: { rgb: INDIGO } },
+          border: {
+            top: { style: "thin", color: { rgb: INDIGO } },
+            bottom: { style: "thin", color: { rgb: INDIGO } },
+          },
+          alignment: { horizontal: "left", vertical: "center" },
+        };
+      case "data":
+        return {
+          ...base,
+          font: { sz: 11, color: { rgb: BODY_TEXT } },
+          border: {
+            top: { style: "hair", color: { rgb: BORDER_LIGHT } },
+            bottom: { style: "hair", color: { rgb: BORDER_LIGHT } },
+          },
+          alignment: { horizontal: "left", vertical: "center" },
+        };
+    }
+  };
+
+  const buildStyledSheet = (r: EmployeeReport) => {
+    const rows = buildReportRows(r);
+    const ws = XLSX.utils.aoa_to_sheet(rows.map((row) => row.cells));
+    ws["!cols"] = [{ wch: 36 }, { wch: 24 }, { wch: 16 }];
+    ws["!rows"] = [];
+    ws["!merges"] = [];
+
+    rows.forEach((row, i) => {
+      row.cells.forEach((_, c) => {
+        const cell = ws[XLSX.utils.encode_cell({ r: i, c })];
+        if (cell) cell.s = cellStyle(row.kinds[c] || "data");
+      });
+
+      if (row.kinds[0] === "section") {
+        ws["!merges"]!.push({ s: { r: i, c: 0 }, e: { r: i, c: 2 } });
+        ws["!rows"]![i] = { hpt: 26 };
+      } else if (row.kinds[0] === "header") {
+        ws["!rows"]![i] = { hpt: 22 };
+      } else if (row.kinds.includes("label")) {
+        ws["!rows"]![i] = { hpt: 20 };
+      }
+    });
+
+    return ws;
+  };
 
   const exportCSV = () => {
     const reports: EmployeeReport[] = data?.employeeReports || [];
@@ -145,7 +229,7 @@ export default function ReportsPage() {
     if (employeeId !== "all") {
       const report = reports[0];
       if (!report) return;
-      const rows = buildReportRows(report);
+      const rows = buildReportRows(report).map((row) => row.cells);
       const csv = `\uFEFF${rows.map((row) => row.map(csvEscape).join(",")).join("\n")}`;
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
@@ -161,8 +245,7 @@ export default function ReportsPage() {
     const wb = XLSX.utils.book_new();
     const usedNames = new Set<string>();
     reports.forEach((report, i) => {
-      const ws = XLSX.utils.aoa_to_sheet(buildReportRows(report));
-      ws["!cols"] = [{ wch: 32 }, { wch: 18 }, { wch: 12 }];
+      const ws = buildStyledSheet(report);
       let sheetName = (report.employee?.name || `Employee ${i + 1}`).replace(/[\\/?*[\]:]/g, " ").slice(0, 31);
       let unique = sheetName;
       let n = 2;

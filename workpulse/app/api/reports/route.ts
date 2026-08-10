@@ -146,21 +146,29 @@ export async function GET(request: NextRequest) {
       heatmap[day] = (heatmap[day] || 0) + (entry._sum?.durationMinutes || 0);
     }
 
-    let employeeReport: Record<string, unknown> | null = null;
-    if (employeeId) {
-      const employee = await prisma.user.findUnique({
-        where: { id: employeeId },
-        select: { id: true, name: true, email: true, phone: true, designation: true },
-      });
+    const reportUsers = employeeId
+      ? [{ id: employeeId }]
+      : await prisma.user.findMany({
+          where: { role: { in: ["EMPLOYEE", "TEAM_LEADER"] } },
+          select: { id: true, name: true, email: true, phone: true, designation: true },
+          orderBy: { name: "asc" },
+        });
 
-      const leaveWhere: { userId: string; date?: Record<string, unknown> } = { userId: employeeId };
+    const employeeReports: Array<Record<string, unknown>> = [];
+    if (reportUsers.length) {
+      const userIds = reportUsers.map((u) => u.id);
+
+      const reportEntryWhere: Record<string, unknown> = { ...timeEntryWhere, durationMinutes: { not: null } };
+      if (!employeeId) reportEntryWhere.userId = { in: userIds };
+
+      const leaveWhere: { userId: { in: string[] }; date?: Record<string, unknown> } = { userId: { in: userIds } };
       if (startDate || endDate) {
         leaveWhere.date = {};
         if (startDate) leaveWhere.date.gte = new Date(startDate);
         if (endDate) leaveWhere.date.lte = new Date(endDate);
       }
 
-      const qcWhere: { employeeId: string; qcReport?: Record<string, unknown> } = { employeeId };
+      const qcWhere: { employeeId: { in: string[] }; qcReport?: Record<string, unknown> } = { employeeId: { in: userIds } };
       if (startDate || endDate) {
         qcWhere.qcReport = {};
         if (startDate) qcWhere.qcReport.date = { gte: new Date(startDate) };
@@ -172,47 +180,61 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const [entries, totalLeaves, qcFlags] = await Promise.all([
+      const [entries, leaveGroups, qcGroups] = await Promise.all([
         prisma.timeEntry.findMany({
-          where: { ...timeEntryWhere, durationMinutes: { not: null } },
-          select: { checkInAt: true, durationMinutes: true, totalPauseMs: true, projectId: true },
+          where: reportEntryWhere,
+          select: { userId: true, checkInAt: true, durationMinutes: true, totalPauseMs: true, projectId: true },
         }),
-        prisma.leave.count({ where: leaveWhere }),
-        prisma.qcMistake.count({ where: qcWhere }),
+        prisma.leave.groupBy({ by: ["userId"], where: leaveWhere, _count: { _all: true } }),
+        prisma.qcMistake.groupBy({ by: ["employeeId"], where: qcWhere, _count: { _all: true } }),
       ]);
 
-      const workingDays = new Set(
-        entries.map((e) => new Date(e.checkInAt).toISOString().split("T")[0])
-      ).size;
-      const totalWorkingMinutes = entries.reduce((acc, e) => acc + (e.durationMinutes || 0), 0);
-      const totalIdleMs = entries.reduce((acc, e) => acc + (e.totalPauseMs || 0), 0);
+      const leaveMap = new Map(leaveGroups.map((g) => [g.userId, g._count._all]));
+      const qcMap = new Map(qcGroups.map((g) => [g.employeeId, g._count._all]));
 
-      const perProject = new Map<string, number>();
+      const perUser = new Map(
+        userIds.map((id) => [
+          id,
+          { totalWorkingMinutes: 0, totalIdleMs: 0, workingDays: new Set<string>(), perProject: new Map<string, number>() },
+        ])
+      );
+
       for (const e of entries) {
-        if (!e.projectId) continue;
-        perProject.set(e.projectId, (perProject.get(e.projectId) || 0) + (e.durationMinutes || 0));
+        const agg = e.userId ? perUser.get(e.userId) : undefined;
+        if (!agg) continue;
+        agg.totalWorkingMinutes += e.durationMinutes || 0;
+        agg.totalIdleMs += e.totalPauseMs || 0;
+        agg.workingDays.add(new Date(e.checkInAt).toISOString().split("T")[0]);
+        if (e.projectId) {
+          agg.perProject.set(e.projectId, (agg.perProject.get(e.projectId) || 0) + (e.durationMinutes || 0));
+        }
       }
 
-      const projectSummary = [...perProject.entries()]
-        .map(([projectId, minutes]) => {
-          const proj = projectMap.get(projectId);
+      employeeReports.push(
+        ...reportUsers.map((u) => {
+          const agg = perUser.get(u.id)!;
+          const projectSummary = [...agg.perProject.entries()]
+            .map(([projectId, minutes]) => {
+              const proj = projectMap.get(projectId);
+              return {
+                project: proj?.name || "Unknown",
+                client: proj?.clientName || "",
+                hours: Math.round((minutes / 60) * 10) / 10,
+              };
+            })
+            .sort((a, b) => b.hours - a.hours);
+
           return {
-            project: proj?.name || "Unknown",
-            client: proj?.clientName || "",
-            hours: Math.round((minutes / 60) * 10) / 10,
+            employee: u,
+            totalWorkingDays: agg.workingDays.size,
+            totalLeaves: leaveMap.get(u.id) || 0,
+            totalWorkingHours: Math.round((agg.totalWorkingMinutes / 60) * 10) / 10,
+            totalIdleHours: Math.round((agg.totalIdleMs / 3600000) * 10) / 10,
+            projectSummary,
+            qcFlags: qcMap.get(u.id) || 0,
           };
         })
-        .sort((a, b) => b.hours - a.hours);
-
-      employeeReport = {
-        employee,
-        totalWorkingDays: workingDays,
-        totalLeaves,
-        totalWorkingHours: Math.round((totalWorkingMinutes / 60) * 10) / 10,
-        totalIdleHours: Math.round((totalIdleMs / 3600000) * 10) / 10,
-        projectSummary,
-        qcFlags,
-      };
+      );
     }
 
     return apiSuccess({
@@ -220,7 +242,7 @@ export async function GET(request: NextRequest) {
       projectHours: projectsWithTime,
       subTaskHours: subTasksWithTime,
       heatmap,
-      employeeReport,
+      employeeReports,
     });
   } catch (error) {
     return handleApiError(error);

@@ -23,6 +23,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Download, FileBarChart } from "lucide-react";
+import * as XLSX from "xlsx";
 import { formatDurationShort, formatDuration } from "@/lib/utils";
 import { useChartColors } from "@/lib/chartColors";
 
@@ -107,30 +108,44 @@ export default function ReportsPage() {
     return str;
   };
 
-  const exportCSV = () => {
-    const report = data?.employeeReport;
-    if (report) {
-      const rows: Array<Array<string | number | null | undefined>> = [];
-      rows.push(["Employee Details"]);
-      rows.push(["Employee Name", report.employee?.name || ""]);
-      rows.push(["Designation", report.employee?.designation || ""]);
-      rows.push(["Ph No", report.employee?.phone || ""]);
-      rows.push([]);
-      rows.push(["1. Attendance & Time Utilization"]);
-      rows.push(["Total Working Days", report.totalWorkingDays]);
-      rows.push(["Total Leave", report.totalLeaves]);
-      rows.push(["Total Working Hours", `${report.totalWorkingHours}h`]);
-      rows.push(["Total Idle Hours/breaks", `${report.totalIdleHours}h`]);
-      rows.push([]);
-      rows.push(["2. Project-wise Work Summary"]);
-      rows.push(["Project", "Client", "Hours"]);
-      (report.projectSummary || []).forEach((p: { project: string; client: string; hours: number }) => {
-        rows.push([p.project, p.client, `${p.hours}h`]);
-      });
-      rows.push([]);
-      rows.push(["4. Quality Metrics"]);
-      rows.push(["Total number of QC flag", report.qcFlags]);
+  type EmployeeReport = {
+    employee?: { id: string; name?: string; email?: string; phone?: string; designation?: string };
+    totalWorkingDays: number;
+    totalLeaves: number;
+    totalWorkingHours: number;
+    totalIdleHours: number;
+    projectSummary: Array<{ project: string; client: string; hours: number }>;
+    qcFlags: number;
+  };
 
+  const buildReportRows = (r: EmployeeReport): Array<Array<string | number>> => [
+    ["Employee Details"],
+    ["Employee Name", r.employee?.name || ""],
+    ["Designation", r.employee?.designation || ""],
+    ["Ph No", r.employee?.phone || ""],
+    [],
+    ["1. Attendance & Time Utilization"],
+    ["Total Working Days", r.totalWorkingDays],
+    ["Total Leave", r.totalLeaves],
+    ["Total Working Hours", `${r.totalWorkingHours}h`],
+    ["Total Idle Hours/breaks", `${r.totalIdleHours}h`],
+    [],
+    ["2. Project-wise Work Summary"],
+    ["Project", "Client", "Hours"],
+    ...(r.projectSummary || []).map((p) => [p.project, p.client, `${p.hours}h`]),
+    [],
+    ["4. Quality Metrics"],
+    ["Total number of QC flag", r.qcFlags],
+  ];
+
+  const exportCSV = () => {
+    const reports: EmployeeReport[] = data?.employeeReports || [];
+    if (!reports.length) return;
+
+    if (employeeId !== "all") {
+      const report = reports[0];
+      if (!report) return;
+      const rows = buildReportRows(report);
       const csv = `\uFEFF${rows.map((row) => row.map(csvEscape).join(",")).join("\n")}`;
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
@@ -143,22 +158,23 @@ export default function ReportsPage() {
       return;
     }
 
-    const employeeData = data?.employeeHours || [];
-    if (!employeeData.length) return;
-    const headers = ["Employee", "Total Hours", "Project Breakdown"];
-    const rows = employeeData.map((e: any) => [
-      e.name,
-      e.totalHours,
-      (e.projectBreakdown || []).map((p: any) => `${p.name}: ${p.hours}h`).join("; "),
-    ]);
-    const csv = `\uFEFF${[headers.join(","), ...rows.map((r: string[]) => r.join(","))].join("\n")}`;
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `report-${preset}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const wb = XLSX.utils.book_new();
+    const usedNames = new Set<string>();
+    reports.forEach((report, i) => {
+      const ws = XLSX.utils.aoa_to_sheet(buildReportRows(report));
+      ws["!cols"] = [{ wch: 32 }, { wch: 18 }, { wch: 12 }];
+      let sheetName = (report.employee?.name || `Employee ${i + 1}`).replace(/[\\/?*[\]:]/g, " ").slice(0, 31);
+      let unique = sheetName;
+      let n = 2;
+      while (usedNames.has(unique)) {
+        const suffix = ` (${n})`;
+        unique = `${sheetName.slice(0, 31 - suffix.length)}${suffix}`;
+        n++;
+      }
+      usedNames.add(unique);
+      XLSX.utils.book_append_sheet(wb, ws, unique);
+    });
+    XLSX.writeFile(wb, `employee-reports-${preset}.xlsx`);
   };
 
   const employeeColumns = [
@@ -227,7 +243,7 @@ export default function ReportsPage() {
           variant="outline"
           className="border-border text-foreground"
           onClick={exportCSV}
-          disabled={!data || (!data.employeeReport && !data.employeeHours?.length)}
+          disabled={!data || (!data.employeeReports?.length && !data.employeeHours?.length)}
         >
           <Download className="h-4 w-4 mr-2" />
           Export CSV

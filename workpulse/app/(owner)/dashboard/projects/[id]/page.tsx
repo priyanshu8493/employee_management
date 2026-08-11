@@ -64,7 +64,7 @@ export default function ProjectDetailPage() {
   const [assignSubtask, setAssignSubtask] = useState<any>(null);
   const [assignSelectedIds, setAssignSelectedIds] = useState<string[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [timeLogFilter, setTimeLogFilter] = useState("thisWeek");
+  const [timeLogFilter, setTimeLogFilter] = useState("all");
 
   const chartColors = useChartColors();
 
@@ -141,6 +141,7 @@ export default function ProjectDetailPage() {
 
   const filteredTimeLog = useMemo(() => {
     const entries = (timeLogEntries || []) as TimeEntry[];
+    if (timeLogFilter === "all") return entries;
     if (timeLogFilter === "thisWeek") {
       const now = new Date();
       const start = new Date(now);
@@ -795,6 +796,7 @@ export default function ProjectDetailPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-surface-raised border-border max-h-80">
+                  <SelectItem value="all">All</SelectItem>
                   <SelectItem value="thisWeek">This Week</SelectItem>
                   {availableMonths.map((m) => {
                     const [year, month] = m.split("-");

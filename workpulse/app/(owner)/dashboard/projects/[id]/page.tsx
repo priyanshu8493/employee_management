@@ -110,14 +110,34 @@ export default function ProjectDetailPage() {
   });
 
   const availableMonths = useMemo(() => {
-    const months = new Set<string>();
-    ((timeLogEntries || []) as TimeEntry[]).forEach((e) => {
-      const d = new Date(e.checkInAt);
-      if (isNaN(d.getTime())) return;
-      months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
-    });
-    return [...months].sort((a, b) => b.localeCompare(a));
-  }, [timeLogEntries]);
+    const now = new Date();
+    const end = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    let startDate: Date;
+    const projectStart = project?.startDate ? new Date(project.startDate) : null;
+    if (projectStart && !isNaN(projectStart.getTime())) {
+      startDate = new Date(projectStart.getFullYear(), projectStart.getMonth(), 1);
+    } else {
+      let earliestTs: number | null = null;
+      for (const e of (timeLogEntries || []) as TimeEntry[]) {
+        const t = new Date(e.checkInAt).getTime();
+        if (isNaN(t)) continue;
+        if (earliestTs === null || t < earliestTs) earliestTs = t;
+      }
+      const earliest = earliestTs !== null ? new Date(earliestTs) : new Date(end);
+      startDate = new Date(earliest.getFullYear(), earliest.getMonth(), 1);
+    }
+
+    if (startDate.getTime() > end.getTime()) startDate = new Date(end);
+
+    const months: string[] = [];
+    const cursor = new Date(startDate);
+    while (cursor.getTime() <= end.getTime()) {
+      months.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`);
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    return months.reverse();
+  }, [timeLogEntries, project?.startDate]);
 
   const filteredTimeLog = useMemo(() => {
     const entries = (timeLogEntries || []) as TimeEntry[];

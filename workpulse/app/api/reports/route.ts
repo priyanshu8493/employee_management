@@ -147,7 +147,10 @@ export async function GET(request: NextRequest) {
     }
 
     const reportUsers = employeeId
-      ? [{ id: employeeId }]
+      ? await prisma.user.findMany({
+          where: { id: employeeId },
+          select: { id: true, name: true, email: true, phone: true, designation: true },
+        })
       : await prisma.user.findMany({
           where: { role: { in: ["EMPLOYEE", "TEAM_LEADER"] } },
           select: { id: true, name: true, email: true, phone: true, designation: true },

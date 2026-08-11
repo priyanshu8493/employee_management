@@ -106,33 +106,39 @@ export default function ReportsPage() {
     const reports: EmployeeReport[] = data?.employeeReports || [];
     if (!reports.length) return;
 
-    const wb = XLSX.utils.book_new();
+    const sheets: Array<{ report: EmployeeReport; sheetName: string }> = [];
 
     if (employeeId !== "all") {
       const report = reports[0];
       if (!report) return;
       const sheetName = (report.employee?.name || "Employee").replace(/[\\/?*[\]:]/g, " ").slice(0, 31);
-      XLSX.utils.book_append_sheet(wb, buildStyledSheet(report), sheetName || "Employee");
-      const name = (report.employee?.name || "employee").replace(/\s+/g, "-").toLowerCase();
-      XLSX.writeFile(wb, `employee-report-${name}-${preset}.xlsx`);
-      return;
+      sheets.push({ report, sheetName: sheetName || "Employee" });
+    } else {
+      const usedNames = new Set<string>();
+      reports.forEach((report, i) => {
+        const sheetName = (report.employee?.name || `Employee ${i + 1}`).replace(/[\\/?*[\]:]/g, " ").slice(0, 31);
+        let unique = sheetName;
+        let n = 2;
+        while (usedNames.has(unique)) {
+          const suffix = ` (${n})`;
+          unique = `${sheetName.slice(0, 31 - suffix.length)}${suffix}`;
+          n++;
+        }
+        usedNames.add(unique);
+        sheets.push({ report, sheetName: unique });
+      });
     }
 
-    const usedNames = new Set<string>();
-    reports.forEach((report, i) => {
-      const ws = buildStyledSheet(report);
-      let sheetName = (report.employee?.name || `Employee ${i + 1}`).replace(/[\\/?*[\]:]/g, " ").slice(0, 31);
-      let unique = sheetName;
-      let n = 2;
-      while (usedNames.has(unique)) {
-        const suffix = ` (${n})`;
-        unique = `${sheetName.slice(0, 31 - suffix.length)}${suffix}`;
-        n++;
-      }
-      usedNames.add(unique);
-      XLSX.utils.book_append_sheet(wb, ws, unique);
-    });
-    XLSX.writeFile(wb, `employee-reports-${preset}.xlsx`);
+    const wb = XLSX.utils.book_new();
+    for (const { report, sheetName } of sheets) {
+      XLSX.utils.book_append_sheet(wb, buildStyledSheet(report), sheetName);
+    }
+
+    const prefix =
+      employeeId !== "all"
+        ? `employee-report-${(reports[0].employee?.name || "employee").replace(/\s+/g, "-").toLowerCase()}`
+        : "employee-reports";
+    XLSX.writeFile(wb, `${prefix}-${preset}.xlsx`);
   };
 
   type EmployeeReport = {

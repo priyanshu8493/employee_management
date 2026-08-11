@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
@@ -48,6 +48,7 @@ import { useChartColors } from "@/lib/chartColors";
 
 const STATUS_ORDER = ["TODO", "IN_PROGRESS", "DONE"] as const;
 const PRESET_COLORS = ["#6C63FF", "#22C55E", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4", "#EC4899", "#14B8A6"];
+type TimeEntry = { checkInAt: string; durationMinutes?: number };
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -63,6 +64,7 @@ export default function ProjectDetailPage() {
   const [assignSubtask, setAssignSubtask] = useState<any>(null);
   const [assignSelectedIds, setAssignSelectedIds] = useState<string[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [timeLogFilter, setTimeLogFilter] = useState("thisWeek");
 
   const chartColors = useChartColors();
 
@@ -106,6 +108,32 @@ export default function ProjectDetailPage() {
     },
     staleTime: 30000,
   });
+
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>();
+    ((timeLogEntries || []) as TimeEntry[]).forEach((e) => {
+      const d = new Date(e.checkInAt);
+      if (isNaN(d.getTime())) return;
+      months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    });
+    return [...months].sort((a, b) => b.localeCompare(a));
+  }, [timeLogEntries]);
+
+  const filteredTimeLog = useMemo(() => {
+    const entries = (timeLogEntries || []) as TimeEntry[];
+    if (timeLogFilter === "thisWeek") {
+      const now = new Date();
+      const start = new Date(now);
+      start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+      start.setHours(0, 0, 0, 0);
+      return entries.filter((e) => new Date(e.checkInAt).getTime() >= start.getTime());
+    }
+    return entries.filter((e) => {
+      const d = new Date(e.checkInAt);
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      return ym === timeLogFilter;
+    });
+  }, [timeLogEntries, timeLogFilter]);
 
   const updateMutation = useMutation({
     mutationFn: async (data: Record<string, unknown>) => {
@@ -739,14 +767,39 @@ export default function ProjectDetailPage() {
         </TabsContent>
 
         <TabsContent value="timelog">
-          <DataTable
-            columns={timeColumns}
-            data={timeLogEntries || []}
-            searchable
-            searchPlaceholder="Search entries..."
-            pageSize={20}
-            emptyMessage="No time entries for this project"
-          />
+          <Card className="border border-border p-5 rounded-xl">
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              <span className="text-sm text-muted-foreground">Period</span>
+              <Select value={timeLogFilter} onValueChange={(v) => v && setTimeLogFilter(v)}>
+                <SelectTrigger className="w-44 bg-surface border-border text-foreground">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-surface-raised border-border max-h-80">
+                  <SelectItem value="thisWeek">This Week</SelectItem>
+                  {availableMonths.map((m) => {
+                    const [year, month] = m.split("-");
+                    const label = new Date(Number(year), Number(month) - 1, 1).toLocaleDateString("en-US", {
+                      month: "long",
+                      year: "numeric",
+                    });
+                    return (
+                      <SelectItem key={m} value={m}>
+                        {label}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <DataTable
+              columns={timeColumns}
+              data={filteredTimeLog}
+              searchable
+              searchPlaceholder="Search entries..."
+              pageSize={20}
+              emptyMessage="No time entries for this period"
+            />
+          </Card>
         </TabsContent>
       </Tabs>
 

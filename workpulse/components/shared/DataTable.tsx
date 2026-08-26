@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -54,6 +54,10 @@ export function DataTable<T extends Record<string, unknown>>({
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(pageSize);
+
+  useEffect(() => {
+    setPage(0);
+  }, [data]);
 
   const filtered = useMemo(() => {
     let items = data;

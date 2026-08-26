@@ -48,6 +48,23 @@ import { useChartColors } from "@/lib/chartColors";
 
 const STATUS_ORDER = ["TODO", "IN_PROGRESS", "DONE"] as const;
 const PRESET_COLORS = ["#6C63FF", "#22C55E", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4", "#EC4899", "#14B8A6"];
+const DEFAULT_SUBTASKS = [
+  "Modeling",
+  "Hangars Trimble",
+  "Coordination - 1",
+  "Coordination - 2",
+  "Shop dwg",
+  "Hanger location dwg",
+  "Slab Penetration",
+  "Wall Penetration",
+  "Penetratio Trimble",
+  "Modeling QC",
+  "Shop dwg QC",
+  "BOQ",
+  "Spool",
+  "As built",
+  "Misc",
+];
 type TimeEntry = { checkInAt: string; durationMinutes?: number };
 
 export default function ProjectDetailPage() {
@@ -833,11 +850,34 @@ export default function ProjectDetailPage() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label className="text-foreground">Name *</Label>
-              <Input
-                value={newSubtask.name}
-                onChange={(e) => setNewSubtask((p) => ({ ...p, name: e.target.value }))}
-                className="bg-surface border-border text-foreground"
-              />
+              <Select
+                value={DEFAULT_SUBTASKS.includes(newSubtask.name) ? newSubtask.name : "custom"}
+                onValueChange={(v) => {
+                  if (v === "custom") {
+                    setNewSubtask((p) => ({ ...p, name: "" }));
+                  } else if (v) {
+                    setNewSubtask((p) => ({ ...p, name: v }));
+                  }
+                }}
+              >
+                <SelectTrigger className="bg-surface border-border text-foreground">
+                  <SelectValue placeholder="Select a subtask" />
+                </SelectTrigger>
+                <SelectContent className="bg-surface-raised border-border max-h-72">
+                  {DEFAULT_SUBTASKS.map((st) => (
+                    <SelectItem key={st} value={st}>{st}</SelectItem>
+                  ))}
+                  <SelectItem value="custom">Custom...</SelectItem>
+                </SelectContent>
+              </Select>
+              {!DEFAULT_SUBTASKS.includes(newSubtask.name) && (
+                <Input
+                  value={newSubtask.name}
+                  onChange={(e) => setNewSubtask((p) => ({ ...p, name: e.target.value }))}
+                  placeholder="Enter custom subtask name"
+                  className="bg-surface border-border text-foreground"
+                />
+              )}
             </div>
             <div className="space-y-2">
               <Label className="text-foreground">Description</Label>

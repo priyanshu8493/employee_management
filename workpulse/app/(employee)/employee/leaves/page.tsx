@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/lib/utils";
-import { CalendarOff, Plus, Trash2, CalendarCheck, MessageSquare } from "lucide-react";
+import { CalendarOff, Plus, Trash2, CalendarCheck, MessageSquare, Bot } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -174,32 +174,45 @@ export default function EmployeeLeavesPage() {
               >
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <CalendarOff className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">{formatDate(leave.date)}</p>
-                    {leave.reason && (
-                      <p className="text-sm text-muted-foreground">{leave.reason}</p>
-                    )}
-                    {leave.remarks && (
-                      <div className="mt-1.5 p-2 rounded-md bg-primary/5 border border-primary/10">
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mb-0.5">
-                          <MessageSquare className="h-3 w-3" /> Owner Remarks
-                        </p>
-                        <p className="text-sm text-foreground">{leave.remarks}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-danger hover:text-danger hover:bg-danger/10"
-                  onClick={() => cancelMutation.mutate(leave.id)}
-                  disabled={cancelMutation.isPending}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                     {leave.type === "AUTO" ? (
+                       <Bot className="h-5 w-5 text-amber-500" />
+                     ) : (
+                       <CalendarOff className="h-5 w-5 text-primary" />
+                     )}
+                   </div>
+                   <div>
+                     <div className="flex items-center gap-2">
+                       <p className="font-medium text-foreground">{formatDate(leave.date)}</p>
+                       {leave.type === "AUTO" && (
+                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                           <Bot className="h-3 w-3" /> Auto-marked
+                         </span>
+                       )}
+                     </div>
+                     {leave.reason && (
+                       <p className="text-sm text-muted-foreground">{leave.reason}</p>
+                     )}
+                     {leave.remarks && (
+                       <div className="mt-1.5 p-2 rounded-md bg-primary/5 border border-primary/10">
+                         <p className="text-xs text-muted-foreground flex items-center gap-1 mb-0.5">
+                           <MessageSquare className="h-3 w-3" /> Owner Remarks
+                         </p>
+                         <p className="text-sm text-foreground">{leave.remarks}</p>
+                       </div>
+                     )}
+                   </div>
+                 </div>
+                 {leave.type !== "AUTO" && (
+                   <Button
+                     variant="ghost"
+                     size="sm"
+                     className="text-danger hover:text-danger hover:bg-danger/10"
+                     onClick={() => cancelMutation.mutate(leave.id)}
+                     disabled={cancelMutation.isPending}
+                   >
+                     <Trash2 className="h-4 w-4" />
+                   </Button>
+                 )}
               </div>
             ))}
           </div>
@@ -220,10 +233,21 @@ export default function EmployeeLeavesPage() {
               >
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                    <CalendarOff className="h-5 w-5 text-muted-foreground" />
+                    {leave.type === "AUTO" ? (
+                      <Bot className="h-5 w-5 text-amber-500" />
+                    ) : (
+                      <CalendarOff className="h-5 w-5 text-muted-foreground" />
+                    )}
                   </div>
                   <div>
-                    <p className="font-medium text-foreground">{formatDate(leave.date)}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-foreground">{formatDate(leave.date)}</p>
+                      {leave.type === "AUTO" && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                          <Bot className="h-3 w-3" /> Auto-marked
+                        </span>
+                      )}
+                    </div>
                     {leave.reason && (
                       <p className="text-sm text-muted-foreground">{leave.reason}</p>
                     )}

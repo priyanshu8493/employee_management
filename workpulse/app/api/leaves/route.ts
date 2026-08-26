@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
         data: {
           userId: session.user.id,
           date: startOfDay,
+          type: "MANUAL",
           reason: reason || null,
         },
         include: {
@@ -148,6 +149,7 @@ export async function POST(request: NextRequest) {
         data: newDays.map((d) => ({
           userId: session.user.id,
           date: d,
+          type: "MANUAL",
           reason: reason || null,
         })),
       });

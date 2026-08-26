@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, UserCheck, UserX, AlertTriangle, Trash2, CalendarDays, Plus, Coffee, Edit3 } from "lucide-react";
+import { ArrowLeft, UserCheck, UserX, AlertTriangle, Trash2, CalendarDays, Plus, Coffee, Edit3, Bot } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -623,11 +623,22 @@ export default function EmployeeDetailPage() {
                 {leaveStats.leaves.map((leave: any) => (
                   <div key={leave.id} className="flex items-center justify-between p-4 hover:bg-surface-raised/50 transition-colors">
                     <div className="flex items-center gap-3">
-                      <CalendarDays className="h-4 w-4 text-warning shrink-0" />
+                      {leave.type === "AUTO" ? (
+                        <Bot className="h-4 w-4 text-amber-500 shrink-0" />
+                      ) : (
+                        <CalendarDays className="h-4 w-4 text-warning shrink-0" />
+                      )}
                       <div>
-                        <p className="text-sm font-medium text-foreground">
-                          {new Date(leave.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-foreground">
+                            {new Date(leave.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                          </p>
+                          {leave.type === "AUTO" && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                              <Bot className="h-2.5 w-2.5" /> Auto
+                            </span>
+                          )}
+                        </div>
                         {leave.reason && (
                           <p className="text-xs text-muted-foreground mt-0.5">{leave.reason}</p>
                         )}

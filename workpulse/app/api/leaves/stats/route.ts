@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
         userId,
         date: { gte: startOfYear, lt: endOfYear },
       },
-      select: { date: true, reason: true, id: true },
+      select: { date: true, reason: true, id: true, type: true },
       orderBy: { date: "desc" },
     });
 

@@ -1,5 +1,11 @@
 {
   "buildCommand": "npx prisma generate && next build",
   "installCommand": "npm install",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/cron/auto-leave",
+      "schedule": "0 23 * * 1-5"
+    }
+  ]
 }

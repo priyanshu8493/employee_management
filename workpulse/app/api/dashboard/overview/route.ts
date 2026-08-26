@@ -91,6 +91,7 @@ export async function GET() {
         where: { date: { gte: startOfDay, lt: dayEnd } },
         select: {
           id: true,
+          type: true,
           user: { select: { id: true, name: true, email: true, avatarUrl: true } },
         },
         orderBy: { createdAt: "desc" },

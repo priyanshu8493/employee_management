@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
-import { CalendarOff, Search, MessageSquare, Save, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { CalendarOff, Search, MessageSquare, Save, ChevronLeft, ChevronRight, Trash2, Bot } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -216,6 +216,11 @@ export default function OwnerLeavesPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium text-foreground">{leave.user?.name}</p>
+                          {leave.type === "AUTO" && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                              <Bot className="h-3 w-3" /> Auto-marked
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm text-foreground mt-0.5">
                           {formatDate(leave.date)}

@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Activity,
   CalendarOff,
+  Bot,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -204,7 +205,12 @@ export default function DashboardOverviewPage() {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm font-medium text-foreground">{leave.user?.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-medium text-foreground">{leave.user?.name}</p>
+                    {leave.type === "AUTO" && (
+                      <Bot className="h-3 w-3 text-amber-500" />
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">{leave.user?.email}</p>
                 </div>
               </div>

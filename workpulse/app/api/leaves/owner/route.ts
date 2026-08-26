@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId,
         date: startOfDay,
+        type: "MANUAL",
         reason: reason || null,
       },
       include: {

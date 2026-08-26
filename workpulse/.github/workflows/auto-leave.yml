@@ -1,0 +1,23 @@
+name: Auto-Mark Leaves
+
+on:
+  schedule:
+    - cron: "0 23 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  mark-leaves:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger auto-leave
+        run: |
+          curl -s -X POST \
+            "${{ secrets.APP_URL }}/api/cron/auto-leave" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            | tee response.json
+
+          echo ""
+          echo "--- Response ---"
+          cat response.json | python3 -m json.tool

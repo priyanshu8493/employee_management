@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   Users,
   CalendarOff,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -34,6 +35,7 @@ const employeeNavItems = [
 const teamLeaderNavItems = [
   ...employeeNavItems,
   { href: "/employee/team-tasks", label: "Team Tasks", icon: Users },
+  { href: "/employee/project-progress", label: "Project Progress", icon: BarChart3 },
 ];
 
 export function EmployeeSidebar() {

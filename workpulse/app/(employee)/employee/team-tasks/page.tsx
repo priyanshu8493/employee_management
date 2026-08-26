@@ -4,11 +4,12 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Users, Loader2, ChevronDown, ChevronRight, Edit3 } from "lucide-react";
+import { Users, Loader2, ChevronDown, ChevronRight, Edit3, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ProgressBar } from "@/components/shared/ProgressBar";
 import {
   Dialog,
   DialogContent,
@@ -109,8 +110,46 @@ export default function TeamTasksPage() {
           </div>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {activeProjects.map((project: any) => {
+        <>
+          <Card className="border border-border p-5 rounded-xl">
+            <div className="flex items-center gap-2 mb-4">
+              <Clock className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold text-foreground">Project Progress</h2>
+            </div>
+            <div className="space-y-4">
+              {activeProjects.map((project: any) => {
+                const hoursLogged = Math.round((project.totalMinutes || 0) / 60 * 10) / 10;
+                return (
+                  <div
+                    key={project.id}
+                    className="p-4 rounded-lg bg-surface-raised hover:bg-surface-raised/80 cursor-pointer transition-colors"
+                    onClick={() => setExpandedProject(expandedProject === project.id ? null : project.id)}
+                    style={{ borderLeft: `3px solid ${project.color}` }}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-foreground">{project.name}</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success">
+                          {project.status}
+                        </span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {hoursLogged}h / {project.estimatedHours || 0}h
+                      </span>
+                    </div>
+                    <ProgressBar
+                      value={hoursLogged}
+                      max={project.estimatedHours || 1}
+                      showLabel={false}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          <div className="space-y-4">
+            {activeProjects.map((project: any) => {
             const isExpanded = expandedProject === project.id;
             const subtasks = subtasksMap?.[project.id] || [];
 
@@ -206,7 +245,8 @@ export default function TeamTasksPage() {
               </Card>
             );
           })}
-        </div>
+          </div>
+        </>
       )}
 
       <Dialog open={!!assignSubtask} onOpenChange={() => setAssignSubtask(null)}>

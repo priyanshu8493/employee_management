@@ -113,7 +113,7 @@ export default function LiveActivityPage() {
               key={entry.id}
               className="border border-border p-5 rounded-xl hover:border-primary/20 transition-colors"
             >
-              <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-start justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-3">
                   <div className="relative">
                     <Avatar className="h-10 w-10">
@@ -129,7 +129,7 @@ export default function LiveActivityPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-6 flex-wrap">
+                <div className="flex flex-col items-start justify-start gap-3 min-w-[160px]">
                   <div>
                     <p className="text-xs text-muted-foreground">Project</p>
                     <div className="flex items-center gap-1.5 text-sm">
@@ -153,14 +153,14 @@ export default function LiveActivityPage() {
                       })}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div>
                     <p className="text-xs text-muted-foreground">Duration</p>
                     <LiveTimerDisplay checkInAt={entry.checkInAt} serverNow={entry.serverNow} />
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-danger text-danger hover:bg-danger/10"
+                    className="border-danger text-danger hover:bg-danger/10 mt-1"
                     onClick={() => setForceStopEntry(entry)}
                   >
                     <Square className="h-3.5 w-3.5 mr-1.5" />

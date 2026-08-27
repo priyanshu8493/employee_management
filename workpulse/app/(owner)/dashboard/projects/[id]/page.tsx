@@ -173,6 +173,11 @@ export default function ProjectDetailPage() {
     });
   }, [timeLogEntries, timeLogFilter]);
 
+  const timeLogTotalMinutes = useMemo(
+    () => (filteredTimeLog as TimeEntry[]).reduce((sum, e) => sum + (e.durationMinutes || 0), 0),
+    [filteredTimeLog]
+  );
+
   const updateMutation = useMutation({
     mutationFn: async (data: Record<string, unknown>) => {
       const res = await fetch(`/api/projects/${id}`, {
@@ -838,6 +843,17 @@ export default function ProjectDetailPage() {
               pageSize={20}
               emptyMessage="No time entries for this period"
             />
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-foreground">Total Time</span>
+                <span className="text-xs text-muted-foreground">
+                  ({filteredTimeLog.length} {filteredTimeLog.length === 1 ? "entry" : "entries"})
+                </span>
+              </div>
+              <span className="text-sm font-semibold text-foreground">
+                {formatDuration(timeLogTotalMinutes)}
+              </span>
+            </div>
           </Card>
         </TabsContent>
       </Tabs>

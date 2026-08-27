@@ -13,11 +13,11 @@ export async function GET(request: NextRequest) {
 
     if (!userId) return apiError("userId is required", "VALIDATION_ERROR", 400);
 
-    const year = yearParam ? parseInt(yearParam, 10) : new Date().getFullYear();
+    const year = yearParam ? parseInt(yearParam, 10) : new Date().getUTCFullYear();
     if (isNaN(year)) return apiError("Invalid year", "VALIDATION_ERROR", 400);
 
-    const startOfYear = new Date(year, 0, 1);
-    const endOfYear = new Date(year + 1, 0, 1);
+    const startOfYear = new Date(Date.UTC(year, 0, 1));
+    const endOfYear = new Date(Date.UTC(year + 1, 0, 1));
 
     const allLeaves = await prisma.leave.findMany({
       where: {
@@ -32,7 +32,9 @@ export async function GET(request: NextRequest) {
     for (let m = 0; m < 12; m++) monthlyCounts[m] = 0;
 
     for (const leave of allLeaves) {
-      const month = new Date(leave.date).getMonth();
+      const t = new Date(leave.date);
+      if (isNaN(t.getTime())) continue;
+      const month = t.getUTCMonth();
       monthlyCounts[month]++;
     }
 

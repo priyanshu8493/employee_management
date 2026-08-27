@@ -115,11 +115,9 @@ export default function EmployeeLeavesPage() {
     setLeaveReason("");
   };
 
-  const upcomingLeaves = (leaves || []).filter(
-    (l: any) => new Date(l.date) >= new Date(new Date().toDateString())
-  );
+  const upcomingLeaves = leaves || [];
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date().toLocaleDateString("en-CA");
 
   const previewDays = useMemo(() => {
     if (leaveMode === "single") return leaveDate ? 1 : 0;

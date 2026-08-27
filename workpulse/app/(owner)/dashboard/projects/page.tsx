@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -40,6 +40,7 @@ export default function ProjectsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [clientFilter, setClientFilter] = useState("ALL");
+  const [leaderFilter, setLeaderFilter] = useState("ALL");
   const [archiveId, setArchiveId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editProject, setEditProject] = useState<any>(null);
@@ -67,11 +68,12 @@ export default function ProjectsPage() {
   });
 
   const { data: projectsData, isLoading } = useQuery({
-    queryKey: ["projects", statusFilter, clientFilter],
+    queryKey: ["projects", statusFilter, clientFilter, leaderFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (statusFilter !== "ALL") params.set("status", statusFilter);
       if (clientFilter !== "ALL") params.set("clientName", clientFilter);
+      if (leaderFilter !== "ALL") params.set("leaderId", leaderFilter);
       const res = await fetch(`/api/projects?${params}`);
       const { data } = await res.json();
       return data || { projects: [], clientNames: [] };
@@ -91,13 +93,40 @@ export default function ProjectsPage() {
     staleTime: 60000,
   });
 
+  const { data: allLeaders = [] } = useQuery({
+    queryKey: ["project-leaders"],
+    queryFn: async () => {
+      const res = await fetch("/api/projects");
+      const { data } = await res.json();
+      return data?.leaders || [];
+    },
+    staleTime: 60000,
+  });
+
   const clientNames = allClientNames;
+  const leaders = allLeaders;
+
+  const appliedLeaderIds = useMemo(
+    () => (leaders.length ? new Set(leaders.map((l: any) => String(l.id))) : null),
+    [leaders]
+  );
 
   useEffect(() => {
     if (clientFilter !== "ALL" && clientNames.length > 0 && !clientNames.includes(clientFilter)) {
       setClientFilter("ALL");
     }
   }, [clientNames, clientFilter]);
+
+  useEffect(() => {
+    if (
+      leaderFilter !== "ALL" &&
+      appliedLeaderIds &&
+      appliedLeaderIds.size > 0 &&
+      !appliedLeaderIds.has(String(leaderFilter))
+    ) {
+      setLeaderFilter("ALL");
+    }
+  }, [appliedLeaderIds, leaderFilter]);
 
   const { data: employees } = useQuery({
     queryKey: ["employees-all"],
@@ -334,12 +363,23 @@ export default function ProjectsPage() {
               ))}
             </SelectContent>
           </Select>
-          {(statusFilter !== "ALL" || clientFilter !== "ALL") && (
+          <Select value={leaderFilter} onValueChange={(v) => v && setLeaderFilter(v)}>
+            <SelectTrigger className="w-56 bg-surface border-border text-foreground">
+              <SelectValue labels={{ ALL: "Team Leader: All", ...Object.fromEntries(leaders.map((l: any) => [String(l.id), `Team Leader: ${l.name}`])) }} />
+            </SelectTrigger>
+            <SelectContent className="bg-surface-raised border-border">
+              <SelectItem value="ALL">Team Leader: All</SelectItem>
+              {leaders.map((l: any) => (
+                <SelectItem key={l.id} value={String(l.id)}>Team Leader: {l.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {(statusFilter !== "ALL" || clientFilter !== "ALL" || leaderFilter !== "ALL") && (
             <Button
               variant="ghost"
               size="sm"
               className="text-muted-foreground h-9 px-2"
-              onClick={() => { setStatusFilter("ALL"); setClientFilter("ALL"); }}
+              onClick={() => { setStatusFilter("ALL"); setClientFilter("ALL"); setLeaderFilter("ALL"); }}
             >
               <X className="h-3.5 w-3.5 mr-1" />
               Clear

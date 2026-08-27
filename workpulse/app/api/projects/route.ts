@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const search = searchParams.get("search");
     const clientName = searchParams.get("clientName");
+    const leaderId = searchParams.get("leaderId");
 
     const where: Record<string, unknown> = {};
 
@@ -31,8 +32,11 @@ export async function GET(request: NextRequest) {
     if (clientName) {
       where.clientName = clientName;
     }
+    if (leaderId) {
+      where.projectLeaders = { some: { userId: leaderId } };
+    }
 
-    const [projects, timeAggregates, clientNames] = await Promise.all([
+    const [projects, timeAggregates, clientNames, leaders] = await Promise.all([
       prisma.project.findMany({
         where,
         select: {
@@ -63,6 +67,11 @@ export async function GET(request: NextRequest) {
         select: { clientName: true },
         distinct: ["clientName"],
       }),
+      prisma.user.findMany({
+        where: { role: "TEAM_LEADER", isActive: true },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      }),
     ]);
 
     const timeByProject = new Map<string, number>();
@@ -75,7 +84,11 @@ export async function GET(request: NextRequest) {
       totalMinutes: timeByProject.get(p.id) || 0,
     }));
 
-    return apiSuccess({ projects: projectsWithTime, clientNames: clientNames.map((c) => c.clientName).filter(Boolean) as string[] });
+    return apiSuccess({
+      projects: projectsWithTime,
+      clientNames: clientNames.map((c) => c.clientName).filter(Boolean) as string[],
+      leaders: leaders.map((l) => ({ id: l.id, name: l.name })),
+    });
   } catch (error) {
     return handleApiError(error);
   }

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiSuccess, apiError, handleApiError, requireRole } from "@/lib/api-utils";
+import { dateToUTCDate } from "@/lib/utils";
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
@@ -16,12 +17,11 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return apiError("Employee not found", "NOT_FOUND", 404);
 
-    const leaveDate = new Date(date);
-    if (isNaN(leaveDate.getTime())) return apiError("Invalid date", "VALIDATION_ERROR", 400);
+    const startOfDay = dateToUTCDate(String(date));
+    if (!startOfDay) return apiError("Invalid date", "VALIDATION_ERROR", 400);
 
-    const startOfDay = new Date(leaveDate.getFullYear(), leaveDate.getMonth(), leaveDate.getDate());
     const endOfDay = new Date(startOfDay);
-    endOfDay.setDate(endOfDay.getDate() + 1);
+    endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
 
     const existing = await prisma.leave.findFirst({
       where: {
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existing) {
-      return apiError(`${user.name} already has a leave on ${startOfDay.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`, "CONFLICT", 409);
+      return apiError(`${user.name} already has a leave on ${startOfDay.toISOString().split("T")[0]}`, "CONFLICT", 409);
     }
 
     const leave = await prisma.leave.create({

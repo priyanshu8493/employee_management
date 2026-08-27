@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiSuccess, apiError } from "@/lib/api-utils";
+import { startOfUTCDay } from "@/lib/utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,14 +23,15 @@ export async function POST(request: NextRequest) {
     const targetDateStr: string | undefined = body.date;
 
     const targetDate = targetDateStr ? new Date(targetDateStr) : new Date();
-    const year = targetDate.getFullYear();
-    const month = targetDate.getMonth();
-    const day = targetDate.getDate();
+    if (isNaN(targetDate.getTime())) {
+      return apiError("Invalid date", "VALIDATION_ERROR", 400);
+    }
 
-    const startOfDay = new Date(year, month, day);
-    const endOfDay = new Date(year, month, day + 1);
+    const startOfDay = startOfUTCDay(targetDate);
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
 
-    if (WEEKEND_DAYS.includes(startOfDay.getDay())) {
+    if (WEEKEND_DAYS.includes(startOfDay.getUTCDay())) {
       return apiSuccess({
         message: "Weekend - skipping auto-leave",
         date: startOfDay.toISOString(),
@@ -136,12 +138,13 @@ export async function GET(request: NextRequest) {
     const dateParam = searchParams.get("date");
 
     const targetDate = dateParam ? new Date(dateParam) : new Date();
-    const year = targetDate.getFullYear();
-    const month = targetDate.getMonth();
-    const day = targetDate.getDate();
+    if (isNaN(targetDate.getTime())) {
+      return apiError("Invalid date", "VALIDATION_ERROR", 400);
+    }
 
-    const startOfDay = new Date(year, month, day);
-    const endOfDay = new Date(year, month, day + 1);
+    const startOfDay = startOfUTCDay(targetDate);
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
 
     const activeEmployees = await prisma.user.findMany({
       where: { isActive: true, role: { in: ["EMPLOYEE", "TEAM_LEADER"] } },

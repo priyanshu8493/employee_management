@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiSuccess, apiError, handleApiError, requireAuth } from "@/lib/api-utils";
+import { startOfUTCDay } from "@/lib/utils";
 export const runtime = "nodejs";
 
 
@@ -54,7 +55,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return apiError("You can only cancel your own leave", "FORBIDDEN", 403);
     }
 
-    if (leave.date < new Date() && session.user.role !== "OWNER") {
+    if (leave.date < startOfUTCDay(new Date()) && session.user.role !== "OWNER") {
       return apiError("Cannot cancel past leave", "BAD_REQUEST", 400);
     }
 

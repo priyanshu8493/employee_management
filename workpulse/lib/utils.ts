@@ -79,6 +79,34 @@ export function startOfDay(date: Date = new Date()): Date {
   return d;
 }
 
+// Parse a `YYYY-MM-DD` calendar date (from <input type="date">) into a Date
+// normalized to UTC midnight. This is timezone-independent, so leave dates
+// are stored and compared consistently regardless of the server's TZ.
+export function dateToUTCDate(value: string): Date | null {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const [, y, m, d] = match;
+  const year = parseInt(y, 10);
+  const month = parseInt(m, 10);
+  const day = parseInt(d, 10);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    isNaN(date.getTime()) ||
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return date;
+}
+
+// Start of the UTC day (00:00:00Z) containing the given date.
+export function startOfUTCDay(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
 export function endOfDay(date: Date = new Date()): Date {
   const d = new Date(date);
   d.setHours(23, 59, 59, 999);

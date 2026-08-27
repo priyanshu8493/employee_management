@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiSuccess, apiError, handleApiError, requireAuth } from "@/lib/api-utils";
+import { dateToUTCDate, startOfUTCDay } from "@/lib/utils";
 export const runtime = "nodejs";
 
 
@@ -18,14 +19,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (dateParam) {
-      const date = new Date(dateParam);
-      const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const startOfDay = dateToUTCDate(dateParam);
+      if (!startOfDay) return apiError("Invalid date", "VALIDATION_ERROR", 400);
       const endOfDay = new Date(startOfDay);
-      endOfDay.setDate(endOfDay.getDate() + 1);
+      endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
       where.date = { gte: startOfDay, lt: endOfDay };
     } else if (upcoming === "true") {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = startOfUTCDay(new Date());
       where.date = { gte: today };
     }
 
@@ -39,7 +39,16 @@ export async function GET(request: NextRequest) {
       orderBy: { date: "desc" },
     });
 
-    return apiSuccess(leaves.filter((l) => l.user));
+    const maxFuture = new Date();
+    maxFuture.setUTCFullYear(maxFuture.getUTCFullYear() + 5);
+
+    return apiSuccess(
+      leaves.filter((l) => {
+        if (!l.user) return false;
+        const t = new Date(l.date);
+        return !isNaN(t.getTime()) && t <= maxFuture;
+      })
+    );
   } catch (error) {
     return handleApiError(error);
   }
@@ -50,7 +59,7 @@ function getDaysInRange(start: Date, end: Date): Date[] {
   const current = new Date(start);
   while (current <= end) {
     days.push(new Date(current));
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
   }
   return days;
 }
@@ -67,14 +76,13 @@ export async function POST(request: NextRequest) {
     const { date, startDate, endDate, reason } = body;
 
     if (date) {
-      const leaveDate = new Date(date);
-      if (isNaN(leaveDate.getTime())) {
+      const startOfDay = dateToUTCDate(String(date));
+      if (!startOfDay) {
         return apiError("Invalid date", "VALIDATION_ERROR", 400);
       }
 
-      const startOfDay = new Date(leaveDate.getFullYear(), leaveDate.getMonth(), leaveDate.getDate());
       const endOfDay = new Date(startOfDay);
-      endOfDay.setDate(endOfDay.getDate() + 1);
+      endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
 
       const existing = await prisma.leave.findFirst({
         where: {
@@ -105,15 +113,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+      const startNormalized = startOfUTCDay(new Date(startDate));
+      const endNormalized = startOfUTCDay(new Date(endDate));
 
-      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      if (isNaN(startNormalized.getTime()) || isNaN(endNormalized.getTime())) {
         return apiError("Invalid date range", "VALIDATION_ERROR", 400);
       }
-
-      const startNormalized = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-      const endNormalized = new Date(end.getFullYear(), end.getMonth(), end.getDate());
 
       if (startNormalized > endNormalized) {
         return apiError("Start date must be before end date", "VALIDATION_ERROR", 400);
